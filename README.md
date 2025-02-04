@@ -1,4 +1,3 @@
-```markdown
 # goerr
 
 The `goerr` package offers a minimalist way to join multiple errors into one using Go's standard `errors.Join`. It helps to hide detailed server errors from the user by exposing only the main error message, while the full error chain is available for logging.
@@ -60,5 +59,4 @@ func main() {
 
 ## License
 
-This project is licensed under the MIT License.
-```
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/tyrenix/goerr/blob/master/LICENSE) file for details.
