@@ -1,10 +1,8 @@
 # goerr
 
-The `goerr` package offers a minimalist way to join multiple errors into one using Go's standard `errors.Join`. It helps to hide detailed server errors from the user by exposing only the main error message, while the full error chain is available for logging.
+`goerr` is a lightweight error wrapper for Go that builds on top of `errors.Join`. It provides a clean way to wrap multiple errors while exposing only the primary error to users and keeping the full chain available for logging and debugging. It also supports optional metadata like HTTP status codes.
 
 ## Installation
-
-Install the package using the standard `go get` command:
 
 ```bash
 go get -u github.com/tyrenix/goerr
@@ -12,17 +10,20 @@ go get -u github.com/tyrenix/goerr
 
 ## Features
 
-- **Error Joining:**  
-  The `New` function accepts a primary error and additional errors (of type `string` or `error`), joining them using `errors.Join`.
+- **Error joining:**  
+  `goerr.New(base, ...opts)` joins a base error with additional messages or wrapped errors.
 
-- **User-friendly Output:**  
-  The `Error()` method returns only the first error message, intended for user display.
+- **Minimal user-facing error:**  
+  The `.Error()` method returns only the first (main) message — safe for user display.
 
-- **Logging Support:**  
-  The complete error chain can be accessed via `Unwrap()`, which is useful for logging.
+- **Full error chain for logs:**  
+  Use `fmt.Printf("%+v", err)` or `Unwrap()` to get the full context.
 
-- **Custom Formatting:**  
-  Implements the `fmt.Formatter` interface, allowing flexible formatting with `%v`, `%q`, and `%s`.
+- **Optional metadata (e.g., HTTP codes):**  
+  Pass `WithHTTPCode(int)` to associate HTTP status with the error.
+
+- **Custom formatting:**  
+  Implements `fmt.Formatter`: use `%v`, `%s`, `%q` as needed.
 
 ## Usage
 
@@ -31,32 +32,46 @@ package main
 
 import (
 	"fmt"
-	"goerr" // replace with your module path
+	"github.com/tyrenix/goerr"
 )
 
 func main() {
-	// Main error to be shown to the user
-	baseErr := fmt.Errorf("internal error")
+	base := fmt.Errorf("something went wrong")
 
-	// Additional error for logs
-	addErr := "database connection failed"
+	// Join multiple layers and add metadata
+	err := goerr.New(
+		base,
+		"db timeout",
+		fmt.Errorf("connection refused"),
+		goerr.WithHTTPCode(500),
+	)
 
-	// Create a joined error
-	err := goerr.New(baseErr, addErr)
+	fmt.Println("User message:", err.Error())
+	fmt.Printf("Full chain: %+v\n", err)
 
-	// Display error to the user (only the main error)
-	fmt.Println("User error:", err.Error())
-
-	// Log the complete error chain
-	fmt.Printf("Error details: %+v\n", err)
+	if ge, ok := err.(*goerr.Error); ok {
+		fmt.Println("HTTP status:", ge.HTTPCode())
+	}
 }
 ```
 
-## Notes
+## API
 
-- The package is designed with minimalism and efficiency in mind.
-- The main error is displayed to the user, while additional information is kept for logging via `Unwrap()`.
+### `goerr.New(base error, opts ...any) error`
+Joins `base` with additional strings/errors and applies any `Option`.
+
+### `goerr.WithHTTPCode(code int) Option`
+Adds an HTTP status code to the error.
+
+### `(*Error).Error() string`
+Returns the top-level error only (first line).
+
+### `(*Error).Unwrap() error`
+Returns the full joined error for use with `errors.Unwrap()` and `errors.Is()`.
+
+### `(*Error).HTTPCode() int`
+Returns the associated HTTP status code, if set.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/tyrenix/goerr/blob/master/LICENSE) file for details.
+MIT — see [LICENSE](https://github.com/tyrenix/goerr/blob/master/LICENSE)
