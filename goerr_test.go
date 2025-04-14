@@ -9,6 +9,55 @@ import (
 	"github.com/tyrenix/goerr"
 )
 
+// customError is a simple error type used for testing errors.As
+type customError struct {
+	msg string
+}
+
+func (e *customError) Error() string { return e.msg }
+
+func TestErrorsIsAndAs(t *testing.T) {
+	// Case 1: using raw errors.New as base
+	base := errors.New("base error")
+	baseGoErr := goerr.New(base)
+	custom := &customError{"custom wrapped error"}
+
+	baseErr := goerr.New(base, custom, "extra info")
+	goErr := goerr.New(baseGoErr, custom, "extra info")
+
+	// Test errors.Is with original base
+	if !errors.Is(baseErr, base) {
+		t.Errorf("errors.Is failed: expected to find base error in chain")
+	}
+	// Test errors.Is with goerr
+	if !errors.Is(goErr, baseGoErr) {
+		t.Errorf("errors.Is failed: expected to find goerr error in chain")
+	}
+
+	// Test errors.As with custom error
+	var target *customError
+	if !errors.As(baseErr, &target) {
+		t.Errorf("errors.As failed: expected to find customError in chain")
+	}
+	if target.msg != "custom wrapped error" {
+		t.Errorf("unexpected custom error message: got %q", target.msg)
+	}
+
+	// Case 2: using goerr.New as base
+	e1 := goerr.New("main error")
+	e2 := goerr.New(e1, fmt.Errorf("nested db failure"))
+
+	// Test errors.Is with goerr wrapped error
+	if !errors.Is(e2, e1) {
+		t.Errorf("errors.Is failed: expected to find goerr error in chain")
+	}
+
+	// Test that the main error message is preserved
+	if e1.Error() != "main error" {
+		t.Errorf("unexpected main error message: %q", e1.Error())
+	}
+}
+
 func TestNew_WithStringAndError(t *testing.T) {
 	base := errors.New("base")
 	wrapped := errors.New("wrapped")

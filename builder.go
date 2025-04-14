@@ -18,7 +18,7 @@ func New(base any, opts ...any) error {
 	// parse base
 	switch v := base.(type) {
 	case *Error:
-		goerr.err = v.err
+		goerr.err = v
 		goerr.httpCode = v.httpCode
 	case string:
 		goerr.err = errors.New(v)
