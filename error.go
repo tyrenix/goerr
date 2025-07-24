@@ -1,55 +1,51 @@
 package goerr
 
 import (
-	"fmt"
-	"strings"
+	"errors"
 )
 
-// Error represents a custom error type that can wrap multiple errors
-// and carry additional metadata like an HTTP status code.
+// Error represents a custom error with a main error, wrapped errors, and fields.
 type Error struct {
-	err      error // The underlying error (can be joined errors).
-	httpCode int   // Associated HTTP status code.
+	mainErr error          // Main error returned by .Error()
+	wrapped []error        // Wrapped errors for additional context
+	fields  map[string]any // Custom fields (e.g., min_amount: 100)
 }
 
-// Error returns the first error message from the joined error list.
+// Error returns the main error message.
 func (e *Error) Error() string {
-	if e.err == nil {
+	if e.mainErr == nil {
 		return ""
 	}
-	errs := e.unwrap()
-	if len(errs) == 0 {
-		return ""
-	}
-	return errs[0]
+	return e.mainErr.Error()
 }
 
-// Unwrap returns the underlying error, enabling compatibility with errors.Unwrap.
+// Unwrap returns the main error for compatibility with errors.Unwrap.
 func (e *Error) Unwrap() error {
-	return e.err
+	return e.mainErr
 }
 
-// Format implements fmt.Formatter to allow custom formatting using fmt verbs.
-func (e *Error) Format(s fmt.State, c rune) {
-	switch c {
-	case 'v':
-		fmt.Fprintf(s, "%s", strings.Join(e.unwrap(), ": "))
-	case 'q':
-		fmt.Fprintf(s, "%q", e.Error())
-	case 's':
-		fmt.Fprint(s, e.Error())
+// Is implements errors.Is to check if the error matches a target.
+func (e *Error) Is(target error) bool {
+	if errors.Is(e.mainErr, target) {
+		return true
 	}
-}
-
-// unwrap splits the joined error message into a slice of individual error strings.
-func (e *Error) unwrap() []string {
-	if e.err == nil {
-		return nil
+	for _, w := range e.wrapped {
+		if errors.Is(w, target) {
+			return true
+		}
 	}
-	return strings.Split(e.err.Error(), "\n")
+	return false
 }
 
-// HTTPCode returns the associated HTTP status code.
-func (e *Error) HTTPCode() int {
-	return e.httpCode
+// As implements errors.As to check if the error can be assigned to a target.
+func (e *Error) As(target any) bool {
+	if errors.As(e.mainErr, target) {
+		return true
+	}
+	for _, w := range e.wrapped {
+		if errors.As(w, target) {
+			return true
+		}
+	}
+	return false
 }

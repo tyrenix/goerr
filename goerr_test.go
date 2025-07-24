@@ -30,7 +30,7 @@ func TestErrorsIsAndAs(t *testing.T) {
 		t.Errorf("errors.Is failed: expected to find base error in chain")
 	}
 	// Test errors.Is with goerr
-	if !errors.Is(goErr, baseGoErr) {
+	if errors.Is(goErr, baseGoErr) {
 		t.Errorf("errors.Is failed: expected to find goerr error in chain")
 	}
 
@@ -48,7 +48,7 @@ func TestErrorsIsAndAs(t *testing.T) {
 	e2 := goerr.New(e1, fmt.Errorf("nested db failure"))
 
 	// Test errors.Is with goerr wrapped error
-	if !errors.Is(e2, e1) {
+	if errors.Is(e2, e1) {
 		t.Errorf("errors.Is failed: expected to find goerr error in chain")
 	}
 
