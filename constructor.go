@@ -23,7 +23,7 @@ func New(main any, args ...any) error {
 	case string:
 		err.mainErr = errors.New(v)
 	case *Error:
-		err.mainErr = v.mainErr
+		err.mainErr = v
 		err.wrapped = append(err.wrapped, v.wrapped...)
 		maps.Copy(err.fields, v.fields)
 	case error:
