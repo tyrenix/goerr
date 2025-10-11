@@ -5,7 +5,7 @@
 ## Installation
 
 ```bash
-go get -u github.com/tyrenix/goerr@v1.2.0
+go get -u github.com/tyrenix/goerr@v1.3.0
 ```
 
 ## Features
@@ -102,10 +102,6 @@ Returns a detailed string with the primary error, all wrapped errors, and fields
 
 ### `(*Error).Format(s fmt.State, verb rune)`
 Implements `fmt.Formatter`: `%v` for full context, `%s` for primary error, `%q` for quoted primary error.
-
-## Version
-- Current: `v1.2.0`
-- Backwards compatible with `v1.1.2`
 
 ## Contributing
 Contributions are welcome! Please open an issue or pull request at [github.com/tyrenix/goerr](https://github.com/tyrenix/goerr).
