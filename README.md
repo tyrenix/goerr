@@ -10,14 +10,14 @@ go get -u github.com/tyrenix/goerr@v1.2.0
 
 ## Features
 
-- **Error joining**: Combine a primary error with additional errors or messages using `goerr.New(base, ...args)`.
+- **Consistent Error Nesting**: `goerr.New(base, ...args)` now consistently nests `*goerr.Error` instances, allowing `errors.Is` to correctly identify wrapped `*goerr.Error` objects.
 - **Minimal user-facing error**: `.Error()` returns only the primary error message, safe for user display.
-- **Full error context**: Use `Details()` or `fmt.Printf("%v", err)` to get the full chain of errors and fields.
-- **Custom fields**: Add metadata (e.g., `min_amount`, `http_code`) via `WithField` and access via `GetField` or `Fields`.
-- **HTTP status codes**: Set and retrieve HTTP status codes with `WithHTTPCode` and `HTTPCode`.
+- **Full error context**: Use `Details()` or `fmt.Printf("%v", err)` to get the full chain of errors and fields. Example output: `invalid request: validation failed: amount too low: fields: http_code=400, min_amount=100`
+- **Recursive Custom fields**: Add metadata (e.g., `min_amount`, `http_code`) via `WithField` and access via `GetField` or `Fields`. These methods now recursively traverse the entire error chain.
+- **HTTP status codes**: Set and retrieve HTTP status codes with `WithHTTPCode` and `HTTPCode`. `HTTPCode` also works recursively.
 - **Error conversion**: Convert any error to `*goerr.Error` using `FromError`.
 - **Custom formatting**: Implements `fmt.Formatter` with `%v` (full context), `%s` (primary error), `%q` (quoted primary error).
-- **Go compatibility**: Supports `errors.Unwrap`, `errors.Is`, `errors.As` for seamless integration.
+- **Go 1.20+ Compatibility**: Supports `errors.Unwrap() []error`, `errors.Is`, `errors.As` for seamless integration with modern Go error handling.
 
 ## Usage
 
@@ -43,10 +43,10 @@ func main() {
 	// User-facing message
 	fmt.Println("User message:", err.Error()) // User message: invalid request
 
-	// Full context for logging
-	fmt.Printf("Full context: %v\n", err) // Full context: invalid request; validation failed; amount too low; fields: http_code=400, min_amount=100
+	// Full context for logging (note: fields are now part of the recursive output)
+	fmt.Printf("Full context: %v\n", err) // Full context: invalid request: validation failed: amount too low: (http_code=400, min_amount=100)
 
-	// Convert and access fields
+	// Convert and access fields (now works recursively)
 	goErr := goerr.FromError(err)
 	if minAmount, ok := goErr.GetField("min_amount"); ok {
 		fmt.Println("Min amount:", minAmount) // Min amount: 100
@@ -55,12 +55,7 @@ func main() {
 		fmt.Println("HTTP status:", httpCode) // HTTP status: 400
 	}
 
-	// Access wrapped errors
-	for _, w := range goErr.Wrapped() {
-		fmt.Println("Wrapped:", w) // Wrapped: validation failed, Wrapped: amount too low
-	}
-
-	// Check error type
+	// Check error type (now works correctly with nested errors)
 	if errors.Is(err, errors.New("amount too low")) {
 		fmt.Println("Found amount too low error")
 	}
@@ -70,7 +65,7 @@ func main() {
 ## API
 
 ### `goerr.New(main any, args ...any) error`
-Creates an error with a primary message or error, joining additional strings, errors, or options. Preserves context from existing `*goerr.Error`.
+Creates an error with a primary message or error, consistently nesting `*goerr.Error` instances and joining additional strings, errors, or options.
 
 ### `goerr.FromError(err error) *Error`
 Converts any error to `*goerr.Error`, preserving context if already `*goerr.Error`.
@@ -87,32 +82,26 @@ Sets the HTTP status code as a field (`http_code`).
 ### `(*Error).Error() string`
 Returns the primary error message.
 
-### `(*Error).Unwrap() error`
-Returns the primary error for use with `errors.Unwrap`.
+### `(*Error).Unwrap() []error`
+Returns all wrapped errors (including `mainErr`) for compatibility with Go 1.20+ `errors.Is` and `errors.As`.
 
 ### `(*Error).Wrapped() []error`
-Returns the list of wrapped errors.
+Returns the list of explicitly wrapped errors (excluding `mainErr`).
 
 ### `(*Error).Fields() map[string]any`
-Returns the map of custom fields.
+Returns a map of all custom fields collected recursively from the entire error chain. Fields from outer errors overwrite fields from inner errors.
 
 ### `(*Error).GetField(key string) (any, bool)`
-Returns the value of a field by key, with a boolean indicating if it exists.
+Returns the value of a field by key, searching recursively through the entire error chain. Returns a boolean indicating if it exists.
 
 ### `(*Error).HTTPCode() int`
-Returns the associated HTTP status code, if set.
+Returns the associated HTTP status code, if set, searching recursively through the error chain.
 
 ### `(*Error).Details() string`
-Returns a detailed string with the primary error, wrapped errors, and fields.
+Returns a detailed string with the primary error, all wrapped errors, and fields, formatted recursively.
 
 ### `(*Error).Format(s fmt.State, verb rune)`
 Implements `fmt.Formatter`: `%v` for full context, `%s` for primary error, `%q` for quoted primary error.
-
-### `(*Error).Is(target error) bool`
-Supports `errors.Is` to check if the error or wrapped errors match a target.
-
-### `(*Error).As(target any) bool`
-Supports `errors.As` to assign the error or wrapped errors to a target type.
 
 ## Version
 - Current: `v1.2.0`
