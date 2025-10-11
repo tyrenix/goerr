@@ -24,5 +24,5 @@ func WithField(key string, value any) Option {
 
 // WithHTTPCode sets the HTTP status code for the Error.
 func WithHTTPCode(code int) Option {
-	return WithField("http_code", code)
+	return WithField(fieldHTTPCode, code)
 }

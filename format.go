@@ -2,50 +2,47 @@ package goerr
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
-// Wrapped returns the list of wrapped errors.
-func (e *Error) Wrapped() []error {
-	return e.wrapped
-}
+// Details returns a detailed string with the primary error, wrapped errors, and fields.
+func (e *Error) Details() string {
+	var parts []string
 
-// Fields returns the map of custom fields.
-func (e *Error) Fields() map[string]any {
-	return e.fields
-}
-
-// GetField returns the value of a field by key, with a boolean indicating if it exists.
-func (e *Error) GetField(key string) (any, bool) {
-	if e == nil {
-		return nil, false
-	}
-	v, ok := e.fields[key]
-	return v, ok
-}
-
-// HTTPCode returns the associated HTTP status code.
-func (e *Error) HTTPCode() int {
-	if v, ok := e.GetField(fieldHTTPCode); ok {
-		if httpCode, ok := v.(int); ok {
-			return httpCode
+	// recursively get details from all unwrapped children
+	for _, child := range e.Unwrap() {
+		if childGoErr, ok := child.(*Error); ok {
+			parts = append(parts, childGoErr.Details())
+		} else {
+			parts = append(parts, child.Error())
 		}
 	}
-	return 0
+
+	// add fields from the current error level
+	if len(e.fields) > 0 {
+		var fieldParts []string
+		keys := make([]string, 0, len(e.fields))
+		for k := range e.fields {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		for _, k := range keys {
+			fieldParts = append(fieldParts, fmt.Sprintf("%s=%v", k, e.fields[k]))
+		}
+		parts = append(parts, "("+strings.Join(fieldParts, ", ")+")")
+	}
+
+	// join all parts
+	return strings.Join(parts, ": ")
 }
 
 // Format implements fmt.Formatter for custom formatting.
 func (e *Error) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
-		var parts []string
-		if e.mainErr != nil {
-			parts = append(parts, e.mainErr.Error())
-		}
-		for _, w := range e.wrapped {
-			parts = append(parts, w.Error())
-		}
-		fmt.Fprint(s, strings.Join(parts, ": "))
+		fmt.Fprint(s, e.Details())
 	case 'q':
 		fmt.Fprintf(s, "%q", e.Error())
 	case 's':

@@ -3,7 +3,6 @@ package goerr
 import (
 	"errors"
 	"fmt"
-	"maps"
 )
 
 // New creates a new Error with a main error and optional configurations.
@@ -22,10 +21,6 @@ func New(main any, args ...any) error {
 	switch v := main.(type) {
 	case string:
 		err.mainErr = errors.New(v)
-	case *Error:
-		err.mainErr = v
-		err.wrapped = append(err.wrapped, v.wrapped...)
-		maps.Copy(err.fields, v.fields)
 	case error:
 		err.mainErr = v
 	default:
