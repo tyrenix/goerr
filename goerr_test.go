@@ -58,7 +58,7 @@ func TestGoerr(t *testing.T) {
 			name:           "Error with options",
 			err:            goerr.New("with options", goerr.WithField("key", "value"), goerr.WithHTTPCode(400)),
 			expectMsg:      "with options",
-			expectDetails:  "with options: (http_code=400, key=value)",
+			expectDetails:  "with options (http_code=400, key=value)",
 			expectFields:   map[string]any{"key": "value", "http_code": 400},
 			expectHTTPCode: 400,
 		},
@@ -73,7 +73,7 @@ func TestGoerr(t *testing.T) {
 			name:          "Nested goerr as argument",
 			err:           e3, // e3 wraps e1
 			expectMsg:     "e3",
-			expectDetails: "e3: e1: (f1=v1): (f3=v3)",
+			expectDetails: "e3: e1 (f1=v1) (f3=v3)",
 			expectIs:      []error{e1},
 			expectFields:  map[string]any{"f1": "v1", "f3": "v3"},
 		},
@@ -81,7 +81,7 @@ func TestGoerr(t *testing.T) {
 			name:           "Nested goerr as main error",
 			err:            goerr.New(e2, "outer layer"), // e2 is the main error
 			expectMsg:      "e2",
-			expectDetails:  "e2: base error: (f2=v2, http_code=404): outer layer",
+			expectDetails:  "e2: base error (f2=v2, http_code=404): outer layer",
 			expectIs:       []error{e2, baseErr},
 			expectFields:   map[string]any{"f2": "v2", "http_code": 404},
 			expectHTTPCode: 404,

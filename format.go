@@ -21,6 +21,7 @@ func (e *Error) Details() string {
 
 	// add fields from the current error level
 	if len(e.fields) > 0 {
+		// sort fields
 		var fieldParts []string
 		keys := make([]string, 0, len(e.fields))
 		for k := range e.fields {
@@ -28,10 +29,16 @@ func (e *Error) Details() string {
 		}
 		sort.Strings(keys)
 
+		// build field parts
 		for _, k := range keys {
 			fieldParts = append(fieldParts, fmt.Sprintf("%s=%v", k, e.fields[k]))
 		}
-		parts = append(parts, "("+strings.Join(fieldParts, ", ")+")")
+
+		// append fields to last part
+		if len(parts) > 0 {
+			lastPart := parts[len(parts)-1]
+			parts[len(parts)-1] = lastPart + " (" + strings.Join(fieldParts, ", ") + ")"
+		}
 	}
 
 	// join all parts
