@@ -12,7 +12,7 @@ const fieldHTTPCode = "http_code"
 func WithError(wrapped error) Option {
 	return func(e *Error) {
 		if wrapped != nil {
-			e.wrapped = append(e.wrapped, wrapped)
+			e.wrapped = wrapped
 		}
 	}
 }

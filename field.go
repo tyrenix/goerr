@@ -10,22 +10,7 @@ func (e *Error) Fields() map[string]any {
 	}
 
 	// init fields
-	var fields map[string]any
-
-	// get fields from main error
-	if mainErr, ok := e.mainErr.(*Error); ok {
-		fields = mainErr.Fields()
-	} else {
-		fields = make(map[string]any)
-	}
-
-	// get fields from wrapped
-	for _, w := range e.wrapped {
-		if wErr, ok := w.(*Error); ok {
-			maps.Copy(fields, wErr.Fields())
-		}
-	}
-
+	fields := make(map[string]any, len(e.fields))
 	// copy fields
 	maps.Copy(fields, e.fields)
 
@@ -46,23 +31,7 @@ func (e *Error) GetField(key string) (any, bool) {
 		return v, ok
 	}
 
-	// search in mainErr recursively
-	if mainGoErr, ok := e.mainErr.(*Error); ok {
-		if v, ok := mainGoErr.GetField(key); ok {
-			return v, ok
-		}
-	}
-
-	// search in wrapped errors recursively
-	for _, w := range e.wrapped {
-		if wrappedGoErr, ok := w.(*Error); ok {
-			if v, ok := wrappedGoErr.GetField(key); ok {
-				return v, ok
-			}
-		}
-	}
-
-	// if not found, return false
+	// return nil if not found
 	return nil, false
 }
 

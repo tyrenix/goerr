@@ -15,8 +15,8 @@ go get -u github.com/tyrenix/goerr@latest
 - **Structured Metadata**: Attach custom fields to errors for rich logging and debugging.
 - **Minimal User-Facing Messages**: `.Error()` returns only the primary error code, safe for client display.
 - **Detailed Logging**: Use `Details()` or `fmt.Printf("%v", err)` to get the full error chain with context and fields.
-- **Recursive Field Access**: Retrieve metadata from any level of the error chain via `GetField()` or `Fields()`.
-- **Go 1.20+ Compatible**: Full support for `errors.Is`, `errors.As`, and `errors.Unwrap() []error`.
+- **Level-Scoped Metadata**: Fields belong to the current error level; no implicit recursive lookup.
+- **Go Compatible**: Full support for `errors.Is`, `errors.As` via standard `Unwrap()` chaining.
 - **Custom Formatting**: Implements `fmt.Formatter` with `%v` (full details), `%s` (primary error), `%q` (quoted).
 
 ## Quick Start
@@ -55,7 +55,7 @@ func main() {
         goerr.Field("endpoint", "/api/users/123"),
         goerr.Field("method", "GET"))
 
-    // Client sees only the error code
+    // Client sees only the primary business error
     fmt.Println("Error:", err.Error())
     // Output: user.not_found
 
@@ -231,11 +231,11 @@ err := goerr.New("error",
 
 #### `(*Error).Error() string`
 
-Returns the primary error message (safe for client display).
+Returns the primary business error message (safe for client display).
 
 #### `(*Error).Details() string`
 
-Returns the full error chain with context and fields.
+Returns the full error chain with context and fields, intended for logs and diagnostics.
 
 #### `(*Error).Kind() error`
 
@@ -243,15 +243,15 @@ Returns the error kind for transport mapping.
 
 #### `(*Error).GetField(key string) (any, bool)`
 
-Retrieves a field value, searching recursively through the error chain.
+Retrieves a field value from the current error level only.
 
 #### `(*Error).Fields() map[string]any`
 
-Returns all fields from the entire error chain.
+Returns a copy of fields attached to the current error level.
 
-#### `(*Error).Unwrap() []error`
+#### `(*Error).Unwrap() error`
 
-Returns all wrapped errors for compatibility with `errors.Is` and `errors.As`.
+Returns the next wrapped error in the chain.
 
 #### `(*Error).Format(s fmt.State, verb rune)`
 
@@ -271,8 +271,10 @@ The following methods are deprecated and will be removed in a future version:
 Traditional Go error handling with `fmt.Errorf` and `%w` has limitations:
 
 - **No structured metadata**: Can't attach fields like `user_id` or `request_id`
-- **Verbose error chains**: User sees full wrapped chain like "service: repo: db: record not found"
+- **Verbose error chains**: User-facing messages are intentionally minimal.
 - **No error classification**: Hard to map errors to different transport codes (HTTP, gRPC)
+
+Full context is available only through formatting (`%v`) or `Details()`.
 
 `goerr` solves these problems by:
 
