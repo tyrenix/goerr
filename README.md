@@ -1,110 +1,290 @@
 # goerr
 
-`goerr` is a lightweight error wrapper for Go that extends `errors.Join`. It allows wrapping multiple errors while exposing only the primary error to users, keeping the full chain and metadata (e.g., HTTP status codes, custom fields) for logging and debugging.
+`goerr` is a lightweight, structured error handling package for Go that provides error wrapping with context, metadata, and error kind classification for multi-transport applications (HTTP, gRPC, etc.).
 
 ## Installation
 
 ```bash
-go get -u github.com/tyrenix/goerr@v1.3.0
+go get -u github.com/tyrenix/goerr@latest
 ```
 
 ## Features
 
-- **Consistent Error Nesting**: `goerr.New(base, ...args)` now consistently nests `*goerr.Error` instances, allowing `errors.Is` to correctly identify wrapped `*goerr.Error` objects.
-- **Minimal user-facing error**: `.Error()` returns only the primary error message, safe for user display.
-- **Full error context**: Use `Details()` or `fmt.Printf("%v", err)` to get the full chain of errors and fields. Example output: `invalid request: validation failed: amount too low: fields: http_code=400, min_amount=100`
-- **Recursive Custom fields**: Add metadata (e.g., `min_amount`, `http_code`) via `WithField` and access via `GetField` or `Fields`. These methods now recursively traverse the entire error chain.
-- **HTTP status codes**: Set and retrieve HTTP status codes with `WithHTTPCode` and `HTTPCode`. `HTTPCode` also works recursively.
-- **Error conversion**: Convert any error to `*goerr.Error` using `FromError`.
-- **Custom formatting**: Implements `fmt.Formatter` with `%v` (full context), `%s` (primary error), `%q` (quoted primary error).
-- **Go 1.20+ Compatibility**: Supports `errors.Unwrap() []error`, `errors.Is`, `errors.As` for seamless integration with modern Go error handling.
+- **Error Kind Classification**: Categorize errors with semantic kinds (e.g., `KindNotFound`, `KindInternal`) for consistent mapping across different transports (HTTP, gRPC, WebSocket).
+- **Contextual Error Wrapping**: Add context at each layer while preserving the original error kind and metadata.
+- **Structured Metadata**: Attach custom fields to errors for rich logging and debugging.
+- **Minimal User-Facing Messages**: `.Error()` returns only the primary error code, safe for client display.
+- **Detailed Logging**: Use `Details()` or `fmt.Printf("%v", err)` to get the full error chain with context and fields.
+- **Recursive Field Access**: Retrieve metadata from any level of the error chain via `GetField()` or `Fields()`.
+- **Go 1.20+ Compatible**: Full support for `errors.Is`, `errors.As`, and `errors.Unwrap() []error`.
+- **Custom Formatting**: Implements `fmt.Formatter` with `%v` (full details), `%s` (primary error), `%q` (quoted).
 
-## Usage
+## Quick Start
 
 ```go
 package main
 
 import (
-	"errors"
-	"fmt"
-	"github.com/tyrenix/goerr"
+    "fmt"
+    "github.com/tyrenix/goerr"
+)
+
+// Define error kinds for your application
+var (
+    KindNotFound = errors.New("not_found")
+    KindInternal = errors.New("internal")
+)
+
+// Define domain errors
+var (
+    ErrUserNotFound = goerr.New("user.not_found", goerr.Kind(KindNotFound))
+    ErrInternal     = goerr.New("internal", goerr.Kind(KindInternal))
 )
 
 func main() {
-	// Create an error with wrapped errors and metadata
-	err := goerr.New(
-		"invalid request",
-		"validation failed",
-		errors.New("amount too low"),
-		goerr.WithField("min_amount", 100),
-		goerr.WithHTTPCode(400),
-	)
+    // Repository returns a domain error
+    err := ErrUserNotFound
 
-	// User-facing message
-	fmt.Println("User message:", err.Error()) // User message: invalid request
+    // Service adds context with fields
+    err = goerr.Wrap(err, "failed to get user",
+        goerr.Field("user_id", 123),
+        goerr.Field("action", "login"))
 
-	// Full context for logging (note: fields are now part of the recursive output)
-	fmt.Printf("Full context: %v\n", err) // Full context: invalid request: validation failed: amount too low: (http_code=400, min_amount=100)
+    // Handler adds more context
+    err = goerr.Wrap(err, "GET /api/users/:id failed",
+        goerr.Field("endpoint", "/api/users/123"),
+        goerr.Field("method", "GET"))
 
-	// Convert and access fields (now works recursively)
-	goErr := goerr.FromError(err)
-	if minAmount, ok := goErr.GetField("min_amount"); ok {
-		fmt.Println("Min amount:", minAmount) // Min amount: 100
-	}
-	if httpCode, ok := goErr.GetField("http_code"); ok {
-		fmt.Println("HTTP status:", httpCode) // HTTP status: 400
-	}
+    // Client sees only the error code
+    fmt.Println("Error:", err.Error())
+    // Output: user.not_found
 
-	// Check error type (now works correctly with nested errors)
-	if errors.Is(err, errors.New("amount too low")) {
-		fmt.Println("Found amount too low error")
-	}
+    // Logs show full context with fields
+    fmt.Printf("Details: %v\n", err)
+    // Output: user.not_found (kind=not_found): GET /api/users/:id failed (endpoint=/api/users/123, method=GET): failed to get user (action=login, user_id=123)
+
+    // Access error kind for transport mapping
+    goErr := goerr.FromError(err)
+    fmt.Println("Kind:", goErr.Kind())
+    // Output: not_found
+
+    // Access specific fields
+    if userID, ok := goErr.GetField("user_id"); ok {
+        fmt.Println("User ID:", userID)
+        // Output: User ID: 123
+    }
 }
 ```
 
-## API
+## Usage Patterns
 
-### `goerr.New(main any, args ...any) error`
-Creates an error with a primary message or error, consistently nesting `*goerr.Error` instances and joining additional strings, errors, or options.
+### Creating Domain Errors
 
-### `goerr.FromError(err error) *Error`
-Converts any error to `*goerr.Error`, preserving context if already `*goerr.Error`.
+```go
+// Define error kinds
+var (
+    KindNotFound = errors.New("not_found")
+    KindInvalid  = errors.New("invalid")
+    KindInternal = errors.New("internal")
+)
 
-### `goerr.WithError(wrapped error) Option`
-Adds a wrapped error to the error chain.
+// Define domain-specific errors with kinds
+var (
+    ErrUserNotFound  = goerr.New("user.not_found", goerr.Kind(KindNotFound))
+    ErrUserBanned    = goerr.New("user.banned", goerr.Kind(KindInvalid))
+    ErrOrderExpired  = goerr.New("order.expired", goerr.Kind(KindInvalid))
+    ErrDatabaseError = goerr.New("internal", goerr.Kind(KindInternal))
+)
+```
 
-### `goerr.WithField(key string, value any) Option`
-Adds a key-value pair to the error's metadata.
+### Wrapping Errors with Context
 
-### `goerr.WithHTTPCode(code int) Option`
-Sets the HTTP status code as a field (`http_code`).
+```go
+// Repository layer
+func (r *Repository) GetUser(ctx context.Context, id string) (*User, error) {
+    user, err := r.db.Find(id)
+    if err != nil {
+        if errors.Is(err, gorm.ErrRecordNotFound) {
+            return nil, ErrUserNotFound
+        }
+        return nil, ErrDatabaseError
+    }
+    return user, nil
+}
 
-### `(*Error).Error() string`
-Returns the primary error message.
+// Service layer
+func (s *Service) GetUser(ctx context.Context, id string) (*User, error) {
+    user, err := s.repo.GetUser(ctx, id)
+    if err != nil {
+        return nil, goerr.Wrap(err, "failed to get user",
+            goerr.Field("user_id", id))
+    }
+    return user, nil
+}
 
-### `(*Error).Unwrap() []error`
-Returns all wrapped errors (including `mainErr`) for compatibility with Go 1.20+ `errors.Is` and `errors.As`.
+// Handler layer
+func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
+    id := r.PathValue("id")
+    user, err := h.service.GetUser(r.Context(), id)
+    if err != nil {
+        log.Error("request failed",
+            "error", err, // Full context in logs
+            "request_id", middleware.GetReqID(r.Context()))
 
-### `(*Error).Wrapped() []error`
-Returns the list of explicitly wrapped errors (excluding `mainErr`).
+        // Map error kind to HTTP status
+        statusCode := MapErrorToHTTP(err)
+        http.Error(w, err.Error(), statusCode)
+        return
+    }
+    // ...
+}
+```
 
-### `(*Error).Fields() map[string]any`
-Returns a map of all custom fields collected recursively from the entire error chain. Fields from outer errors overwrite fields from inner errors.
+### Mapping Error Kinds to Transport Codes
 
-### `(*Error).GetField(key string) (any, bool)`
-Returns the value of a field by key, searching recursively through the entire error chain. Returns a boolean indicating if it exists.
+```go
+// HTTP mapping
+func MapErrorToHTTP(err error) int {
+    goErr := goerr.FromError(err)
+    switch goErr.Kind() {
+    case KindNotFound:
+        return http.StatusNotFound
+    case KindInvalid:
+        return http.StatusBadRequest
+    case KindInternal:
+        return http.StatusInternalServerError
+    default:
+        return http.StatusInternalServerError
+    }
+}
 
-### `(*Error).HTTPCode() int`
-Returns the associated HTTP status code, if set, searching recursively through the error chain.
+// gRPC mapping
+func MapErrorToGRPC(err error) codes.Code {
+    goErr := goerr.FromError(err)
+    switch goErr.Kind() {
+    case KindNotFound:
+        return codes.NotFound
+    case KindInvalid:
+        return codes.InvalidArgument
+    case KindInternal:
+        return codes.Internal
+    default:
+        return codes.Unknown
+    }
+}
+```
 
-### `(*Error).Details() string`
-Returns a detailed string with the primary error, all wrapped errors, and fields, formatted recursively.
+## API Reference
 
-### `(*Error).Format(s fmt.State, verb rune)`
-Implements `fmt.Formatter`: `%v` for full context, `%s` for primary error, `%q` for quoted primary error.
+### Creating Errors
+
+#### `goerr.New(main any, args ...any) error`
+
+Creates a new error with a primary message/error and optional wrapped errors or options.
+
+```go
+err := goerr.New("user.not_found",
+    goerr.Kind(KindNotFound),
+    goerr.Field("user_id", 123))
+```
+
+#### `goerr.Wrap(main any, context any, opts ...Option) error`
+
+Wraps an error with additional context and fields. Preserves the original error's kind.
+
+```go
+err := goerr.Wrap(dbErr, "failed to query database",
+    goerr.Field("query", "SELECT * FROM users"),
+    goerr.Field("duration_ms", 150),
+)
+```
+
+#### `goerr.FromError(err error) *Error`
+
+Converts any error to `*goerr.Error`, preserving context if already a goerr error.
+
+### Options
+
+#### `goerr.Kind(kind error) Option`
+
+Sets the error kind for transport mapping.
+
+#### `goerr.Field(key string, value any) Option`
+
+Adds a key-value metadata field.
+
+#### `goerr.Fields(fields map[string]any) Option`
+
+Adds multiple metadata fields at once.
+
+```go
+err := goerr.New("error",
+    goerr.Fields(map[string]any{
+        "user_id": 123,
+        "action": "login",
+        "ip": "192.168.1.1",
+    }),
+)
+```
+
+### Methods
+
+#### `(*Error).Error() string`
+
+Returns the primary error message (safe for client display).
+
+#### `(*Error).Details() string`
+
+Returns the full error chain with context and fields.
+
+#### `(*Error).Kind() error`
+
+Returns the error kind for transport mapping.
+
+#### `(*Error).GetField(key string) (any, bool)`
+
+Retrieves a field value, searching recursively through the error chain.
+
+#### `(*Error).Fields() map[string]any`
+
+Returns all fields from the entire error chain.
+
+#### `(*Error).Unwrap() []error`
+
+Returns all wrapped errors for compatibility with `errors.Is` and `errors.As`.
+
+#### `(*Error).Format(s fmt.State, verb rune)`
+
+Custom formatter: `%v` for details, `%s` for primary error, `%q` for quoted.
+
+### Deprecated Methods
+
+The following methods are deprecated and will be removed in a future version:
+
+- `WithError(error) Option` - use wrapping via `New()` or `Wrap()` instead
+- `WithField(key, value) Option` - use `Field()` instead
+- `WithHTTPCode(int) Option` - use `Kind()` with error kind mapping instead
+- `(*Error).HTTPCode() int` - use `Kind()` and transport-specific mapping instead
+
+## Why goerr?
+
+Traditional Go error handling with `fmt.Errorf` and `%w` has limitations:
+
+- **No structured metadata**: Can't attach fields like `user_id` or `request_id`
+- **Verbose error chains**: User sees full wrapped chain like "service: repo: db: record not found"
+- **No error classification**: Hard to map errors to different transport codes (HTTP, gRPC)
+
+`goerr` solves these problems by:
+
+- Separating user-facing error codes from internal context
+- Providing structured metadata for rich logging
+- Classifying errors by kind for consistent transport mapping
+- Maintaining full compatibility with standard Go error handling
 
 ## Contributing
+
 Contributions are welcome! Please open an issue or pull request at [github.com/tyrenix/goerr](https://github.com/tyrenix/goerr).
 
 ## License
+
 MIT — see [LICENSE](https://github.com/tyrenix/goerr/blob/master/LICENSE)

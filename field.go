@@ -66,7 +66,12 @@ func (e *Error) GetField(key string) (any, bool) {
 	return nil, false
 }
 
-// HTTPCode returns the associated HTTP status code.
+// Kind returns the kind of the error.
+func (e *Error) Kind() error {
+	return e.kind
+}
+
+// Deprecated: HTTPCode is deprecated, this method is deprecated and will be removed in a future version.
 func (e *Error) HTTPCode() int {
 	if v, ok := e.GetField(fieldHTTPCode); ok {
 		if httpCode, ok := v.(int); ok {

@@ -2,168 +2,134 @@ package goerr_test
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tyrenix/goerr"
 )
 
-// customError is a simple error type used for testing errors.As
-type customError struct{ msg string }
+// notFound is a test error
+var notFound = errors.New("not_found")
 
-func (e *customError) Error() string { return e.msg }
+func TestNew(t *testing.T) {
+	t.Run("creates error from string", func(t *testing.T) {
+		err := goerr.New("test error")
+		require.NotNil(t, err)
+		assert.Equal(t, "test error", err.Error())
+	})
 
-func TestGoerr(t *testing.T) {
-	// --- Test Primitives ---
-	baseErr := errors.New("base error")
-	customErr := &customError{msg: "custom error"}
+	t.Run("creates error from error", func(t *testing.T) {
+		original := errors.New("original")
+		err := goerr.New(original)
+		require.NotNil(t, err)
+		assert.True(t, errors.Is(err, original))
+	})
 
-	// --- Errors for testing nesting ---
-	// e1 is a simple goerr
-	e1 := goerr.New("e1", goerr.WithField("f1", "v1"))
+	t.Run("with fields", func(t *testing.T) {
+		err := goerr.New("test",
+			goerr.Field("user_id", 123),
+			goerr.Field("action", "login"))
 
-	// e2 wraps a standard error and has its own field
-	e2 := goerr.New("e2", baseErr, goerr.WithField("f2", "v2"), goerr.WithHTTPCode(404))
+		goErr := goerr.FromError(err)
+		val, ok := goErr.GetField("user_id")
+		assert.True(t, ok)
+		assert.Equal(t, 123, val)
+	})
 
-	// e3 wraps e1, creating a nested goerr
-	e3 := goerr.New("e3", e1, goerr.WithField("f3", "v3"))
+	t.Run("with kind", func(t *testing.T) {
+		err := goerr.New("test", goerr.Kind(notFound))
+		goErr := goerr.FromError(err)
+		assert.Equal(t, notFound, goErr.Kind())
+	})
 
-	// init test cases
-	tests := []struct {
-		name string
-		err  error
+	t.Run("nil returns nil", func(t *testing.T) {
+		err := goerr.New(nil)
+		assert.Nil(t, err)
+	})
+}
 
-		// Expectations
-		expectMsg      string
-		expectDetails  string // for %v
-		expectIs       []error
-		expectAs       any
-		expectFields   map[string]any
-		expectHTTPCode int
-	}{
-		{
-			name:          "Simple string error",
-			err:           goerr.New("simple error"),
-			expectMsg:     "simple error",
-			expectDetails: "simple error",
-		},
-		{
-			name:          "Error with wrapped string and standard error",
-			err:           goerr.New("main", "wrapped string", baseErr),
-			expectMsg:     "main",
-			expectDetails: "main: wrapped string: base error",
-			expectIs:      []error{baseErr},
-		},
-		{
-			name:           "Error with options",
-			err:            goerr.New("with options", goerr.WithField("key", "value"), goerr.WithHTTPCode(400)),
-			expectMsg:      "with options",
-			expectDetails:  "with options (http_code=400, key=value)",
-			expectFields:   map[string]any{"key": "value", "http_code": 400},
-			expectHTTPCode: 400,
-		},
-		{
-			name:          "errors.As check",
-			err:           goerr.New("main", customErr),
-			expectMsg:     "main",
-			expectDetails: "main: custom error",
-			expectAs:      &customError{},
-		},
-		{
-			name:          "Nested goerr as argument",
-			err:           e3, // e3 wraps e1
-			expectMsg:     "e3",
-			expectDetails: "e3: e1 (f1=v1) (f3=v3)",
-			expectIs:      []error{e1},
-			expectFields:  map[string]any{"f1": "v1", "f3": "v3"},
-		},
-		{
-			name:           "Nested goerr as main error",
-			err:            goerr.New(e2, "outer layer"), // e2 is the main error
-			expectMsg:      "e2",
-			expectDetails:  "e2: base error (f2=v2, http_code=404): outer layer",
-			expectIs:       []error{e2, baseErr},
-			expectFields:   map[string]any{"f2": "v2", "http_code": 404},
-			expectHTTPCode: 404,
-		},
-		{
-			name:         "GetField recursive from mainErr",
-			err:          goerr.New(e2, "outer"), // e2 has f2="v2"
-			expectFields: map[string]any{"f2": "v2"},
-		},
-		{
-			name:         "GetField recursive from wrapped err",
-			err:          goerr.New("outer", e2), // e2 has f2="v2"
-			expectFields: map[string]any{"f2": "v2"},
-		},
-	}
+func TestWrap(t *testing.T) {
+	t.Run("wraps goerr preserving kind", func(t *testing.T) {
+		original := goerr.New("not_found", goerr.Kind(notFound))
+		wrapped := goerr.Wrap(original, "failed to get user", goerr.Field("user_id", 123))
 
-	// run tests
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// if err is nil, fail
-			if tc.err == nil {
-				t.Fatal("error is nil")
-			}
+		goErr := goerr.FromError(wrapped)
+		assert.Equal(t, notFound, goErr.Kind())
 
-			// test .Error() method
-			if tc.expectMsg != "" && tc.err.Error() != tc.expectMsg {
-				t.Errorf("Expected .Error() to be %q, but got %q", tc.expectMsg, tc.err.Error())
-			}
+		val, ok := goErr.GetField("user_id")
+		assert.True(t, ok)
+		assert.Equal(t, 123, val)
+	})
 
-			// test formatting (%v)
-			details := fmt.Sprintf("%v", tc.err)
-			if tc.expectDetails != "" && details != tc.expectDetails {
-				t.Errorf("Expected details to be %q, but got %q", tc.expectDetails, details)
-			}
+	t.Run("doesn't mutate original", func(t *testing.T) {
+		original := goerr.New("original")
+		goerr.Wrap(original, "wrapped")
 
-			// test errors.Is
-			for _, target := range tc.expectIs {
-				if !errors.Is(tc.err, target) {
-					t.Errorf("Expected errors.Is to be true for target %q", target)
-				}
-			}
+		assert.Equal(t, "original", original.Error())
+	})
 
-			// test errors.As
-			if tc.expectAs != nil {
-				if !errors.As(tc.err, &tc.expectAs) {
-					t.Errorf("Expected errors.As to be true for target type %T", tc.expectAs)
-				}
-			}
+	t.Run("prepends context", func(t *testing.T) {
+		err1 := goerr.New("base")
+		err2 := goerr.Wrap(err1, "context1")
+		err3 := goerr.Wrap(err2, "context2")
 
-			// test field methods
-			if goErr, ok := tc.err.(*goerr.Error); ok {
-				// test HTTPCode()
-				if tc.expectHTTPCode != 0 && goErr.HTTPCode() != tc.expectHTTPCode {
-					t.Errorf("Expected HTTPCode() to be %d, but got %d", tc.expectHTTPCode, goErr.HTTPCode())
-				}
+		details := goerr.FromError(err3).Details()
+		assert.Contains(t, details, "context2")
+		assert.Contains(t, details, "context1")
+		assert.Contains(t, details, "base")
+	})
+}
 
-				// test GetField() and Fields()
-				if tc.expectFields != nil {
-					allFields := goErr.Fields()
-					for key, expectedValue := range tc.expectFields {
-						// test GetField
-						value, ok := goErr.GetField(key)
-						if !ok {
-							t.Errorf("GetField: expected to find key %q, but did not", key)
-							continue
-						}
-						if value != expectedValue {
-							t.Errorf("GetField: expected value for key %q to be %v, but got %v", key, expectedValue, value)
-						}
+func TestDetails(t *testing.T) {
+	t.Run("formats with fields", func(t *testing.T) {
+		err := goerr.New("base_error",
+			goerr.Field("user_id", 123),
+			goerr.Field("action", "login"))
 
-						// Test Fields
-						value, ok = allFields[key]
-						if !ok {
-							t.Errorf("Fields: expected to find key %q, but did not", key)
-							continue
-						}
-						if value != expectedValue {
-							t.Errorf("Fields: expected value for key %q to be %v, but got %v", key, expectedValue, value)
-						}
-					}
-				}
-			}
-		})
-	}
+		details := goerr.FromError(err).Details()
+		// check all fields exists
+		assert.Contains(t, details, "user_id=123")
+		assert.Contains(t, details, "action=login")
+	})
+
+	t.Run("formats wrapped chain", func(t *testing.T) {
+		err1 := goerr.New("db error")
+		err2 := goerr.Wrap(err1, "repo failed", goerr.Field("id", 1))
+		err3 := goerr.Wrap(err2, "service failed")
+
+		details := goerr.FromError(err3).Details()
+		assert.Contains(t, details, "db error")
+		assert.Contains(t, details, "repo failed")
+		assert.Contains(t, details, "id=1")
+	})
+}
+
+func TestGetField(t *testing.T) {
+	t.Run("finds field in current error", func(t *testing.T) {
+		err := goerr.New("test", goerr.Field("key", "value"))
+		goErr := goerr.FromError(err)
+
+		val, ok := goErr.GetField("key")
+		assert.True(t, ok)
+		assert.Equal(t, "value", val)
+	})
+
+	t.Run("finds field in wrapped error", func(t *testing.T) {
+		err1 := goerr.New("base", goerr.Field("deep", "value"))
+		err2 := goerr.Wrap(err1, "wrapper")
+		goErr := goerr.FromError(err2)
+
+		val, ok := goErr.GetField("deep")
+		assert.True(t, ok)
+		assert.Equal(t, "value", val)
+	})
+
+	t.Run("returns false for missing field", func(t *testing.T) {
+		err := goerr.New("test")
+		goErr := goerr.FromError(err)
+
+		_, ok := goErr.GetField("missing")
+		assert.False(t, ok)
+	})
 }

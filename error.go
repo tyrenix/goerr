@@ -3,6 +3,7 @@ package goerr
 // Error represents a custom error with a main error, wrapped errors, and fields.
 type Error struct {
 	mainErr error
+	kind    error
 	wrapped []error
 	fields  map[string]any
 }

@@ -20,7 +20,7 @@ func (e *Error) Details() string {
 	}
 
 	// add fields from the current error level
-	if len(e.fields) > 0 {
+	if len(e.fields) > 0 || e.kind != nil {
 		// sort fields
 		var fieldParts []string
 		keys := make([]string, 0, len(e.fields))
@@ -29,6 +29,11 @@ func (e *Error) Details() string {
 		}
 		sort.Strings(keys)
 
+		// add kind error to fieldParts
+		if e.kind != nil {
+			fieldParts = append(fieldParts, fmt.Sprintf("kind=%v", e.kind))
+		}
+
 		// build field parts
 		for _, k := range keys {
 			fieldParts = append(fieldParts, fmt.Sprintf("%s=%v", k, e.fields[k]))
@@ -36,8 +41,7 @@ func (e *Error) Details() string {
 
 		// append fields to last part
 		if len(parts) > 0 {
-			lastPart := parts[len(parts)-1]
-			parts[len(parts)-1] = lastPart + " (" + strings.Join(fieldParts, ", ") + ")"
+			parts[0] = parts[0] + " (" + strings.Join(fieldParts, ", ") + ")"
 		}
 	}
 
