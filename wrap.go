@@ -2,7 +2,6 @@ package goerr
 
 import (
 	"fmt"
-	"maps"
 )
 
 // Wrap wraps an error with a main error and optional configurations.
@@ -12,32 +11,21 @@ func Wrap(main any, context any, opts ...Option) error {
 		return nil
 	}
 
-	// initialize source error
-	var sourceErr *Error
+	// init error
+	err := &Error{}
+
 	// extract error
 	switch v := main.(type) {
 	case string:
-		sourceErr = FromError(New(v))
+		err.mainErr = New(v)
 	case *Error:
-		sourceErr = v
+		err.mainErr = v
+		err.kind = v.kind
 	case error:
-		sourceErr = FromError(New(v))
+		err.mainErr = New(v)
 	default:
 		return fmt.Errorf("goerr: unsupported main error type %T", v)
 	}
-
-	// create error
-	err := &Error{
-		mainErr: sourceErr.mainErr,
-		kind:    sourceErr.kind,
-		wrapped: make([]error, len(sourceErr.wrapped)),
-		fields:  make(map[string]any),
-	}
-
-	// copy fields
-	maps.Copy(err.fields, sourceErr.fields)
-	// copy wrapped
-	copy(err.wrapped, sourceErr.wrapped)
 
 	// create context error
 	contextErr := FromError(New(context))
@@ -46,8 +34,8 @@ func Wrap(main any, context any, opts ...Option) error {
 		opt(contextErr)
 	}
 
-	// prepend context error
-	err.wrapped = append([]error{contextErr}, err.wrapped...)
+	// append context error
+	err.wrapped = append(err.wrapped, contextErr)
 
 	// return error
 	return err

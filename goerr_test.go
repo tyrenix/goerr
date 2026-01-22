@@ -79,6 +79,18 @@ func TestWrap(t *testing.T) {
 		assert.Contains(t, details, "context1")
 		assert.Contains(t, details, "base")
 	})
+
+	t.Run("wraps other errors", func(t *testing.T) {
+		e0 := goerr.New(notFound, goerr.Field("user", 123), goerr.Kind(notFound))
+		e1 := goerr.Wrap(e0, "failed to get user", goerr.Field("caller", "http"))
+		e2 := goerr.Wrap(e1, "any step 1")
+		e3 := goerr.Wrap(e2, "any step 2")
+
+		assert.ErrorIs(t, e3, notFound)
+		assert.ErrorIs(t, e3, e0)
+		assert.ErrorIs(t, e3, e2)
+		assert.Equal(t, notFound, goerr.FromError(e3).Kind())
+	})
 }
 
 func TestDetails(t *testing.T) {
