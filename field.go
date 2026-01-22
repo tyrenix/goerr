@@ -68,13 +68,6 @@ func (e *Error) GetField(key string) (any, bool) {
 
 // Kind returns the kind of the error.
 func (e *Error) Kind() error {
-	// if kind is nil, return kind from main error if it is an Error
-	if e.kind == nil {
-		if err, ok := e.mainErr.(*Error); ok {
-			return err.Kind()
-		}
-	}
-	// return kind
 	return e.kind
 }
 
