@@ -132,7 +132,7 @@ func TestGetField(t *testing.T) {
 		err2 := goerr.Wrap(err1, "wrapper")
 		goErr := goerr.FromError(err2)
 
-		val, ok := goErr.GetField("deep")
+		val, ok := goErr.GetFieldDeep("deep")
 		assert.True(t, ok)
 		assert.Equal(t, "value", val)
 	})

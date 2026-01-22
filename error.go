@@ -1,5 +1,7 @@
 package goerr
 
+import "errors"
+
 // Error represents a custom error with a main error, wrapped errors, and fields.
 type Error struct {
 	cause error
@@ -47,4 +49,24 @@ func (e *Error) Unwrap() error {
 
 	// return wrapped error
 	return e.wrapped
+}
+
+// Is returns true if the target error is the same as the cause or wrapped error.
+func (e *Error) Is(target error) bool {
+	// if error is nil, return false
+	if e == nil || target == nil {
+		return false
+	}
+
+	// if target equal cause, return true
+	if e.cause != nil && errors.Is(e.cause, target) {
+		return true
+	}
+
+	// if target equal , return true
+	if errors.Is(e.cause, target) {
+		return true
+	}
+
+	return false
 }

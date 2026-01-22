@@ -35,6 +35,28 @@ func (e *Error) GetField(key string) (any, bool) {
 	return nil, false
 }
 
+// GetFieldDeep returns the value of a field by key, with a boolean indicating if it exists.
+func (e *Error) GetFieldDeep(key string) (any, bool) {
+	for cur := e; cur != nil; {
+		// search in current error's fields
+		if v, ok := cur.GetField(key); ok {
+			return v, true
+		}
+
+		// get next error
+		next, ok := e.Unwrap().(*Error)
+		if !ok {
+			break
+		}
+
+		// update current error
+		cur = next
+	}
+
+	// return nil if not found
+	return nil, false
+}
+
 // Kind returns the kind of the error.
 func (e *Error) Kind() error {
 	return e.kind
