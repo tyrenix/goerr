@@ -43,6 +43,11 @@ func Field(key string, value any) Option {
 	}
 }
 
+// Op adds an operation to the Error's operations.
+func Op(op string) Option {
+	return Field("op", op)
+}
+
 // Deprecated: WithHTTPCode is deprecated, this method is deprecated and will be removed in a future version.
 func WithHTTPCode(code int) Option {
 	return WithField(fieldHTTPCode, code)
