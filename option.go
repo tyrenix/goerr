@@ -43,7 +43,8 @@ func Field(key string, value any) Option {
 	}
 }
 
-// Op adds an operation to the Error's operations.
+// Op adds a key-value pair to the Error's fields.
+// A shortcut for Field("op", op).
 func Op(op string) Option {
 	return Field("op", op)
 }
