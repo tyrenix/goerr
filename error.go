@@ -8,7 +8,7 @@ type Error struct {
 	// kind represents the business classification of the error.
 	// It is set only on creation (New) and is inherited across wrapping.
 	// Wrap MUST NOT override kind.
-	kind    error
+	kind    KindValue
 	wrapped error
 	fields  map[string]any
 }

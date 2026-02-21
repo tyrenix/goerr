@@ -41,7 +41,7 @@ func formatOne(e *Error, showKind bool) string {
 	}
 
 	// if no fields, return message
-	if len(e.fields) == 0 && e.kind == nil {
+	if len(e.fields) == 0 && e.kind == "" {
 		return msg
 	}
 
@@ -49,7 +49,7 @@ func formatOne(e *Error, showKind bool) string {
 	var fieldParts []string
 
 	// if kind is set, add it
-	if e.kind != nil && showKind {
+	if e.kind != "" && showKind {
 		fieldParts = append(fieldParts, fmt.Sprintf("kind=%v", e.kind))
 	}
 

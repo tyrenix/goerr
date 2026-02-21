@@ -8,14 +8,11 @@ import (
 )
 
 func main() {
-	// notFound is a test error
-	errNotFound := errors.New("not_found")
-	errInternal := errors.New("internal_error")
 
 	// test 1: Basic error creation with fields and kind
 	fmt.Println("=== Test 1: Basic Error Creation ===")
 	err1 := goerr.New("user.not_found",
-		goerr.Kind(errNotFound),
+		goerr.Kind(goerr.KindNotFound),
 		goerr.Field("user_id", 123),
 		goerr.Field("action", "login"),
 	)
@@ -66,7 +63,7 @@ func main() {
 	fmt.Println("\n=== Test 5: Real-World Scenario ===")
 
 	// repository layer
-	repoErr := goerr.Wrap(goerr.New("internal", goerr.Kind(errInternal)), "postgres connection timeout")
+	repoErr := goerr.Wrap(goerr.New("internal", goerr.Kind(goerr.KindInternal)), "postgres connection timeout")
 
 	// service layer adds context
 	serviceErr := goerr.Wrap(repoErr,

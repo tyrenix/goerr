@@ -18,7 +18,7 @@ func WithError(wrapped error) Option {
 }
 
 // Kind sets the kind of the Error.
-func Kind(kind error) Option {
+func Kind(kind KindValue) Option {
 	return func(e *Error) {
 		e.kind = kind
 	}

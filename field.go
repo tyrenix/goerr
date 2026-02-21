@@ -58,7 +58,7 @@ func (e *Error) GetFieldDeep(key string) (any, bool) {
 }
 
 // Kind returns the kind of the error.
-func (e *Error) Kind() error {
+func (e *Error) Kind() KindValue {
 	return e.kind
 }
 

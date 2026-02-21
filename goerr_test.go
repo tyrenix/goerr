@@ -9,9 +9,6 @@ import (
 	"github.com/tyrenix/goerr"
 )
 
-// notFound is a test error
-var notFound = errors.New("not_found")
-
 func TestNew(t *testing.T) {
 	t.Run("creates error from string", func(t *testing.T) {
 		err := goerr.New("test error")
@@ -38,9 +35,9 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("with kind", func(t *testing.T) {
-		err := goerr.New("test", goerr.Kind(notFound))
+		err := goerr.New("test", goerr.Kind(goerr.KindNotFound))
 		goErr := goerr.FromError(err)
-		assert.Equal(t, notFound, goErr.Kind())
+		assert.Equal(t, goerr.KindNotFound, goErr.Kind())
 	})
 
 	t.Run("nil returns nil", func(t *testing.T) {
@@ -51,11 +48,11 @@ func TestNew(t *testing.T) {
 
 func TestWrap(t *testing.T) {
 	t.Run("wraps goerr preserving kind", func(t *testing.T) {
-		original := goerr.New("not_found", goerr.Kind(notFound))
+		original := goerr.New("not_found", goerr.Kind(goerr.KindNotFound))
 		wrapped := goerr.Wrap(original, "failed to get user", goerr.Field("user_id", 123))
 
 		goErr := goerr.FromError(wrapped)
-		assert.Equal(t, notFound, goErr.Kind())
+		assert.Equal(t, goerr.KindNotFound, goErr.Kind())
 
 		val, ok := goErr.GetField("user_id")
 		assert.True(t, ok)
@@ -81,15 +78,14 @@ func TestWrap(t *testing.T) {
 	})
 
 	t.Run("wraps other errors", func(t *testing.T) {
-		e0 := goerr.New(notFound, goerr.Field("user", 123), goerr.Kind(notFound))
+		e0 := goerr.New("not_found", goerr.Field("user", 123), goerr.Kind(goerr.KindNotFound))
 		e1 := goerr.Wrap(e0, "failed to get user", goerr.Field("caller", "http"))
 		e2 := goerr.Wrap(e1, "any step 1")
 		e3 := goerr.Wrap(e2, "any step 2")
 
-		assert.ErrorIs(t, e3, notFound)
 		assert.ErrorIs(t, e3, e0)
 		assert.ErrorIs(t, e3, e2)
-		assert.Equal(t, notFound, goerr.FromError(e3).Kind())
+		assert.Equal(t, goerr.KindNotFound, goerr.FromError(e3).Kind())
 	})
 }
 
