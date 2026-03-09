@@ -1,72 +1,74 @@
 package goerr
 
-import "errors"
-
-// Error represents a custom error with a main error, wrapped errors, and fields.
+// Error is a structured error with message, specification and cause.
 type Error struct {
-	cause error
-	// kind represents the business classification of the error.
-	// It is set only on creation (New) and is inherited across wrapping.
-	// Wrap MUST NOT override kind.
-	kind    KindValue
-	wrapped error
-	fields  map[string]any
+	msg    string
+	spec   Spec
+	cause  error
+	fields map[string]any
 }
 
-// Error returns the main error message.
+// Error returns the error message chain.
 func (e *Error) Error() string {
-	// if error is nil, return empty string
 	if e == nil {
 		return ""
 	}
 
-	// get stack
-	st := stack(e)
-	if len(st) == 0 {
-		return ""
-	}
-
-	// return last error
-	if last, ok := st[len(st)-1].(*Error); ok {
-		// if not exists cause return empty string
-		if last.cause == nil {
+	if e.msg == "" {
+		if e.cause == nil {
 			return ""
 		}
-		// return cause
-		return last.cause.Error()
+		return e.cause.Error()
 	}
 
-	// return last error
-	return st[len(st)-1].Error()
+	if e.cause == nil {
+		return e.msg
+	}
+
+	return e.msg + ": " + e.cause.Error()
 }
 
-// Unwrap returns all wrapped errors for compatibility with Go 1.20+ errors.Is/As.
+// Unwrap returns the wrapped cause.
 func (e *Error) Unwrap() error {
-	// if error is nil, return nil
 	if e == nil {
 		return nil
 	}
 
-	// return wrapped error
-	return e.wrapped
+	return e.cause
 }
 
-// Is returns true if the target error is the same as the cause or wrapped error.
-func (e *Error) Is(target error) bool {
-	// if error is nil, return false
-	if e == nil || target == nil {
-		return false
+// Message returns the message at the current level.
+func (e *Error) Message() string {
+	if e == nil {
+		return ""
 	}
 
-	// if target equal cause, return true
-	if e.cause != nil && errors.Is(e.cause, target) {
-		return true
+	return e.msg
+}
+
+// Spec returns the current level specification.
+func (e *Error) Spec() Spec {
+	if e == nil {
+		return Spec{}
 	}
 
-	// if target equal , return true
-	if errors.Is(e.cause, target) {
-		return true
+	return e.spec
+}
+
+// Code returns the current level code.
+func (e *Error) Code() Code {
+	if e == nil {
+		return ""
 	}
 
-	return false
+	return e.spec.Code
+}
+
+// Kind returns the current level kind.
+func (e *Error) Kind() Kind {
+	if e == nil {
+		return ""
+	}
+
+	return e.spec.Kind
 }

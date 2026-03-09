@@ -1,6 +1,6 @@
-module github.com/tyrenix/goerr
+module github.com/tyrenix/goerr/v2
 
-go 1.23.3
+go 1.23
 
 require github.com/stretchr/testify v1.11.1
 
