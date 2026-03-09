@@ -24,10 +24,14 @@ func (s *ErrorScenarioSuite) TestHelpers() {
 	code, ok := goerr.CodeOf(err)
 	s.Require().True(ok)
 	s.Equal(goerr.Code("user.not_found"), code)
+	s.True(goerr.CodeIs(err, goerr.Code("user.not_found")))
+	s.False(goerr.CodeIs(err, goerr.Code("other")))
 
 	kind, ok := goerr.KindOf(err)
 	s.Require().True(ok)
 	s.Equal(goerr.KindNotFound, kind)
+	s.True(goerr.KindIs(err, goerr.KindNotFound))
+	s.False(goerr.KindIs(err, goerr.KindInvalid))
 
 	field, ok := goerr.FieldOf(err, "user_id")
 	s.Require().True(ok)
@@ -50,10 +54,12 @@ func (s *ErrorScenarioSuite) TestHelpers_WithStdlibWrapper() {
 	code, ok := goerr.CodeOf(err)
 	s.Require().True(ok)
 	s.Equal(goerr.CodeForbidden, code)
+	s.True(goerr.CodeIs(err, goerr.CodeForbidden))
 
 	kind, ok := goerr.KindOf(err)
 	s.Require().True(ok)
 	s.Equal(goerr.KindForbidden, kind)
+	s.True(goerr.KindIs(err, goerr.KindForbidden))
 
 	goErr, ok := goerr.AsError(err)
 	s.Require().True(ok)
@@ -65,9 +71,11 @@ func (s *ErrorScenarioSuite) TestHelpers_PlainError() {
 
 	_, ok := goerr.CodeOf(err)
 	s.False(ok)
+	s.False(goerr.CodeIs(err, goerr.CodeInternal))
 
 	_, ok = goerr.KindOf(err)
 	s.False(ok)
+	s.False(goerr.KindIs(err, goerr.KindInternal))
 
 	_, ok = goerr.FieldOf(err, "op")
 	s.False(ok)

@@ -59,7 +59,9 @@ func WithField(key string, value any) Option
 func WithFields(fields map[string]any) Option
 
 func CodeOf(err error) (Code, bool)
+func CodeIs(err error, code Code) bool
 func KindOf(err error) (Kind, bool)
+func KindIs(err error, kind Kind) bool
 func FieldOf(err error, key string) (any, bool)
 func AllFields(err error) map[string]any
 func AsError(err error) (*Error, bool)
@@ -159,6 +161,18 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 
 	http.Error(w, string(code), status)
+}
+```
+
+If you need a boolean check instead of extracting the value, use `CodeIs` and `KindIs`.
+
+```go
+if goerr.CodeIs(err, user.SpecNotFound.Code) {
+	// handle not found case
+}
+
+if goerr.KindIs(err, goerr.KindInvalid) {
+	// map invalid errors
 }
 ```
 

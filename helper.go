@@ -26,6 +26,12 @@ func CodeOf(err error) (Code, bool) {
 	return "", false
 }
 
+// CodeIs reports whether the nearest code in the chain matches code.
+func CodeIs(err error, code Code) bool {
+	got, ok := CodeOf(err)
+	return ok && got == code
+}
+
 // KindOf returns the nearest kind from the error chain.
 func KindOf(err error) (Kind, bool) {
 	for _, item := range chain(err) {
@@ -35,6 +41,12 @@ func KindOf(err error) (Kind, bool) {
 	}
 
 	return "", false
+}
+
+// KindIs reports whether the nearest kind in the chain matches kind.
+func KindIs(err error, kind Kind) bool {
+	got, ok := KindOf(err)
+	return ok && got == kind
 }
 
 // FieldOf returns the nearest field value from the error chain.
