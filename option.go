@@ -5,51 +5,35 @@ import "maps"
 // Option defines a functional option for modifying the Error struct.
 type Option func(*Error)
 
-// fieldHTTPCode is the key for the HTTP status code field.
-const fieldHTTPCode = "http_code"
-
-// Deprecated: WithError is deprecated, this method is deprecated and will be removed in a future version.
-func WithError(wrapped error) Option {
+// WithSpec sets the business specification of the error.
+func WithSpec(spec Spec) Option {
 	return func(e *Error) {
-		if wrapped != nil {
-			e.wrapped = wrapped
-		}
+		e.spec = spec
 	}
 }
 
-// Kind sets the kind of the Error.
-func Kind(kind KindValue) Option {
-	return func(e *Error) {
-		e.kind = kind
-	}
-}
-
-// Deprecated: WithField is deprecated, use Field instead.
-func WithField(key string, value any) Option {
-	return Field(key, value)
-}
-
-// Fields adds multiple key-value pairs to the Error's fields.
-func Fields(fields map[string]any) Option {
+// WithFields adds multiple fields to the current error level.
+func WithFields(fields map[string]any) Option {
 	return func(e *Error) {
 		maps.Copy(e.fields, fields)
 	}
 }
 
-// Field adds a key-value pair to the Error's fields.
-func Field(key string, value any) Option {
+// WithField adds a field to the current error level.
+func WithField(key string, value any) Option {
 	return func(e *Error) {
 		e.fields[key] = value
 	}
 }
 
-// Op adds a key-value pair to the Error's fields.
-// A shortcut for Field("op", op).
-func Op(op string) Option {
-	return Field("op", op)
+// WithOp adds the operation name to the current error level.
+func WithOp(op string) Option {
+	return WithField("op", op)
 }
 
-// Deprecated: WithHTTPCode is deprecated, this method is deprecated and will be removed in a future version.
-func WithHTTPCode(code int) Option {
-	return WithField(fieldHTTPCode, code)
+// withCause adds the cause of the error to the current error level.
+func withCause(err error) Option {
+	return func(e *Error) {
+		e.cause = err
+	}
 }

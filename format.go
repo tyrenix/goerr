@@ -8,77 +8,55 @@ import (
 
 // Details returns the error details as a string.
 func (e *Error) Details() string {
-	// init parts
+	return DetailsOf(e)
+}
+
+// DetailsOf returns a detailed string for any error.
+func DetailsOf(err error) string {
+	if err == nil {
+		return ""
+	}
+
 	var parts []string
+	if code, ok := CodeOf(err); ok {
+		head := string(code)
+		if kind, ok := KindOf(err); ok {
+			head += fmt.Sprintf(" (kind=%s)", kind)
+		}
+		parts = append(parts, head)
+	}
 
-	// get stack
-	stack := stack(e)
+	for current := err; current != nil; current = unwrap(current) {
+		if goErr, ok := current.(*Error); ok {
+			part := formatLevel(goErr)
+			if part != "" {
+				parts = append(parts, part)
+			}
+			continue
+		}
 
-	// get last
-	last := stack[len(stack)-1]
-	// add last to start of stack
-	stack = append([]error{last}, stack[:len(stack)-1]...)
-
-	// loop over stack
-	for i, err := range stack {
-		if ge, ok := err.(*Error); ok {
-			parts = append(parts, formatOne(ge, i == 0))
-		} else {
-			parts = append(parts, err.Error())
+		part := formatWrapped(current)
+		if part != "" {
+			parts = append(parts, part)
 		}
 	}
 
-	// return formatted parts
+	if len(parts) == 0 {
+		return err.Error()
+	}
+
 	return strings.Join(parts, ": ")
-}
-
-// formatOne formats a single error.
-func formatOne(e *Error, showKind bool) string {
-	// init message
-	msg := ""
-	if e.cause != nil {
-		msg = e.cause.Error()
-	}
-
-	// if no fields, return message
-	if len(e.fields) == 0 && e.kind == "" {
-		return msg
-	}
-
-	// init field parts
-	var fieldParts []string
-
-	// if kind is set, add it
-	if e.kind != "" && showKind {
-		fieldParts = append(fieldParts, fmt.Sprintf("kind=%v", e.kind))
-	}
-
-	// sort fields
-	keys := make([]string, 0, len(e.fields))
-	for k := range e.fields {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	// add fields
-	for _, k := range keys {
-		fieldParts = append(fieldParts, fmt.Sprintf("%s=%v", k, e.fields[k]))
-	}
-
-	// add fields
-	if len(fieldParts) > 0 {
-		msg += " (" + strings.Join(fieldParts, ", ") + ")"
-	}
-
-	// return formatted message
-	return msg
 }
 
 // Format implements fmt.Formatter for custom formatting.
 func (e *Error) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
-		fmt.Fprint(s, e.Details())
+		if s.Flag('+') {
+			fmt.Fprint(s, e.Details())
+			return
+		}
+		fmt.Fprint(s, e.Error())
 	case 'q':
 		fmt.Fprintf(s, "%q", e.Error())
 	case 's':
@@ -86,22 +64,73 @@ func (e *Error) Format(s fmt.State, verb rune) {
 	}
 }
 
-// stack returns the error stack as a slice of errors.
-func stack(err error) []error {
-	// init stack
-	var stack []error
-	for err != nil {
-		// add current error
-		stack = append(stack, err)
-		u, ok := err.(interface{ Unwrap() error })
-		if !ok {
-			break
-		}
-
-		// get next error
-		err = u.Unwrap()
+// formatLevel formats a single error level into a string, including its message and fields.
+func formatLevel(e *Error) string {
+	if e == nil {
+		return ""
 	}
 
-	// return stack
-	return stack
+	msg := e.msg
+	fields := formatFields(e.fields)
+	if fields == "" {
+		return msg
+	}
+	if msg == "" {
+		return fields
+	}
+
+	return msg + " " + fields
+}
+
+// formatFields formats the fields of an error into a string representation, sorted by key.
+func formatFields(fields map[string]any) string {
+	if len(fields) == 0 {
+		return ""
+	}
+
+	keys := make([]string, 0, len(fields))
+	for k := range fields {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%v", key, fields[key]))
+	}
+
+	return "(" + strings.Join(parts, ", ") + ")"
+}
+
+// formatWrapped formats a non-goerr wrapper level without duplicating its wrapped error text.
+func formatWrapped(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	next := unwrap(err)
+	if next == nil {
+		return err.Error()
+	}
+
+	full := err.Error()
+	suffix := ": " + next.Error()
+	if strings.HasSuffix(full, suffix) {
+		return strings.TrimSuffix(full, suffix)
+	}
+
+	return full
+}
+
+func unwrap(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	next, ok := err.(interface{ Unwrap() error })
+	if !ok {
+		return nil
+	}
+
+	return next.Unwrap()
 }
