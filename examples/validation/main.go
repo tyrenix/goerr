@@ -24,7 +24,7 @@ func main() {
 		fmt.Println("kind:", kind)
 	}
 
-	fmt.Printf("details: %v\n", err)
+	fmt.Printf("details: %+v\n", err)
 }
 
 func validatePassword(password string) error {

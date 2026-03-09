@@ -167,7 +167,7 @@ func writeError(w http.ResponseWriter, err error) {
 If you need a boolean check instead of extracting the value, use `CodeIs` and `KindIs`.
 
 ```go
-if goerr.CodeIs(err, user.SpecNotFound.Code) {
+if goerr.CodeIs(err, UserNotFound.Code) {
 	// handle not found case
 }
 

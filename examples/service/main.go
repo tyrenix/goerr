@@ -17,7 +17,7 @@ func main() {
 	}
 
 	fmt.Println("error:", err.Error())
-	fmt.Printf("details: %v\n", err)
+	fmt.Printf("details: %+v\n", err)
 	fmt.Println("fields:", goerr.AllFields(err))
 }
 

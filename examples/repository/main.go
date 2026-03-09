@@ -20,7 +20,7 @@ func main() {
 	}
 
 	fmt.Println("error:", err.Error())
-	fmt.Printf("details: %v\n", err)
+	fmt.Printf("details: %+v\n", err)
 
 	if code, ok := goerr.CodeOf(err); ok {
 		fmt.Println("public code:", code)
