@@ -22,6 +22,7 @@ type Spec struct {
 }
 
 func New(msg string, opts ...Option) error
+func NewWithSpec(msg string, code Code, kind Kind, opts ...Option) error
 func Define(code Code, kind Kind) Spec
 func WithSpec(spec Spec) Option
 
@@ -38,10 +39,12 @@ Define business errors in your shared or domain packages:
 
 ```go
 var (
-	ErrInternal    = goerr.New("internal", goerr.WithSpec(goerr.Define("internal", goerr.KindInternal)))
-	ErrUserNotFound = goerr.New("user not found", goerr.WithSpec(goerr.Define("user.not_found", goerr.KindNotFound)))
+	ErrInternal = goerr.NewWithSpec("internal", "internal", goerr.KindInternal)
+	ErrUserNotFound = goerr.NewWithSpec("user not found", "user.not_found", goerr.KindNotFound)
 )
 ```
+
+`NewWithSpec` is the preferred shorthand for predefined business errors. Use `New(..., WithSpec(...))` when you already have a reusable `Spec`.
 
 Map technical errors to business errors at boundaries:
 

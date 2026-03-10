@@ -10,3 +10,8 @@ func New(msg string, opts ...Option) error {
 
 	return err
 }
+
+// NewWithSpec creates a new business error with the given spec.
+func NewWithSpec(msg string, code Code, kind Kind, opts ...Option) error {
+	return New(msg, append(opts, WithSpec(Define(code, kind)))...)
+}

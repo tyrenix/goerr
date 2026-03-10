@@ -66,7 +66,7 @@ func (s *ErrorScenarioSuite) TestHelpers_PlainError() {
 
 func (s *ErrorScenarioSuite) TestErrorsIs_EquivalentSpec() {
 	err := fmt.Errorf("execute user query: %w: %w", s.errUserNotFound, s.sqlNoRows)
-	target := goerr.New("another message", goerr.WithSpec(s.notFoundSpec))
+	target := goerr.NewWithSpec("another message", s.notFoundSpec.Code, s.notFoundSpec.Kind)
 
 	s.True(errors.Is(err, target))
 }

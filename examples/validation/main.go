@@ -7,9 +7,10 @@ import (
 	"github.com/tyrenix/goerr/v3"
 )
 
-var ErrPasswordTooShort = goerr.New(
+var ErrPasswordTooShort = goerr.NewWithSpec(
 	"password is too short",
-	goerr.WithSpec(goerr.Define("password.too_short", goerr.KindInvalid)),
+	"password.too_short",
+	goerr.KindInvalid,
 )
 
 func main() {
