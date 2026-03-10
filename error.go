@@ -1,44 +1,13 @@
 package goerr
 
-// Error is a structured error with message, specification and cause.
+// Error is a business error with a stable code and kind.
 type Error struct {
-	msg    string
-	spec   Spec
-	cause  error
-	fields map[string]any
+	msg  string
+	spec Spec
 }
 
-// Error returns the error message chain.
+// Error returns the business error message.
 func (e *Error) Error() string {
-	if e == nil {
-		return ""
-	}
-
-	if e.msg == "" {
-		if e.cause == nil {
-			return ""
-		}
-		return e.cause.Error()
-	}
-
-	if e.cause == nil {
-		return e.msg
-	}
-
-	return e.msg + ": " + e.cause.Error()
-}
-
-// Unwrap returns the wrapped cause.
-func (e *Error) Unwrap() error {
-	if e == nil {
-		return nil
-	}
-
-	return e.cause
-}
-
-// Message returns the message at the current level.
-func (e *Error) Message() string {
 	if e == nil {
 		return ""
 	}
@@ -46,7 +15,21 @@ func (e *Error) Message() string {
 	return e.msg
 }
 
-// Spec returns the current level specification.
+// Is reports whether target has the same non-zero specification.
+func (e *Error) Is(target error) bool {
+	if e == nil || target == nil || e.spec.IsZero() {
+		return false
+	}
+
+	t, ok := target.(*Error)
+	if !ok || t == nil || t.spec.IsZero() {
+		return false
+	}
+
+	return e.spec == t.spec
+}
+
+// Spec returns the error specification.
 func (e *Error) Spec() Spec {
 	if e == nil {
 		return Spec{}
@@ -55,7 +38,7 @@ func (e *Error) Spec() Spec {
 	return e.spec
 }
 
-// Code returns the current level code.
+// Code returns the error code.
 func (e *Error) Code() Code {
 	if e == nil {
 		return ""
@@ -64,7 +47,7 @@ func (e *Error) Code() Code {
 	return e.spec.Code
 }
 
-// Kind returns the current level kind.
+// Kind returns the error kind.
 func (e *Error) Kind() Kind {
 	if e == nil {
 		return ""

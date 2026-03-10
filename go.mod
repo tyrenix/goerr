@@ -1,4 +1,4 @@
-module github.com/tyrenix/goerr/v2
+module github.com/tyrenix/goerr/v3
 
 go 1.23
 

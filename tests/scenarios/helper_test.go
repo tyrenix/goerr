@@ -4,66 +4,49 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tyrenix/goerr/v2"
+	"github.com/tyrenix/goerr/v3"
 )
 
-func (s *ErrorScenarioSuite) TestHelpers() {
-	err := goerr.Wrap(
-		goerr.Wrap(
-			errors.New("sql: no rows"),
-			"execute query",
-			goerr.WithSpec(s.notFoundSpec),
-			goerr.WithField("user_id", 42),
-			goerr.WithField("source", "repo"),
-		),
-		"get user",
-		goerr.WithOp("userservice.Get"),
-		goerr.WithField("source", "service"),
-	)
+func (s *ErrorScenarioSuite) TestHelpers_WithBusinessAndTechnicalErrors() {
+	err := fmt.Errorf("execute user query: %w: %w", s.errUserNotFound, s.sqlNoRows)
 
 	code, ok := goerr.CodeOf(err)
 	s.Require().True(ok)
 	s.Equal(goerr.Code("user.not_found"), code)
-	s.True(goerr.CodeIs(err, goerr.Code("user.not_found")))
-	s.False(goerr.CodeIs(err, goerr.Code("other")))
+	s.True(goerr.CodeIs(err, s.notFoundSpec.Code))
 
 	kind, ok := goerr.KindOf(err)
 	s.Require().True(ok)
 	s.Equal(goerr.KindNotFound, kind)
 	s.True(goerr.KindIs(err, goerr.KindNotFound))
-	s.False(goerr.KindIs(err, goerr.KindInvalid))
-
-	field, ok := goerr.FieldOf(err, "user_id")
-	s.Require().True(ok)
-	s.Equal(42, field)
-
-	fields := goerr.AllFields(err)
-	s.Require().NotNil(fields)
-	s.Equal("service", fields["source"])
-	s.Equal("userservice.Get", fields["op"])
-	s.Equal(42, fields["user_id"])
-}
-
-func (s *ErrorScenarioSuite) TestHelpers_WithStdlibWrapper() {
-	err := fmt.Errorf("transport layer: %w", goerr.Wrap(
-		s.permissionError,
-		"check access",
-		goerr.WithSpec(goerr.Define(goerr.CodeForbidden, goerr.KindForbidden)),
-	))
-
-	code, ok := goerr.CodeOf(err)
-	s.Require().True(ok)
-	s.Equal(goerr.CodeForbidden, code)
-	s.True(goerr.CodeIs(err, goerr.CodeForbidden))
-
-	kind, ok := goerr.KindOf(err)
-	s.Require().True(ok)
-	s.Equal(goerr.KindForbidden, kind)
-	s.True(goerr.KindIs(err, goerr.KindForbidden))
 
 	goErr, ok := goerr.AsError(err)
 	s.Require().True(ok)
-	s.Equal("check access", goErr.Message())
+	s.Equal("user not found", goErr.Error())
+
+	s.True(errors.Is(err, s.errUserNotFound))
+	s.True(errors.Is(err, s.sqlNoRows))
+}
+
+func (s *ErrorScenarioSuite) TestHelpers_NearestBusinessErrorWins() {
+	repoErr := fmt.Errorf("execute user query: %w: %w", s.errUserNotFound, s.sqlNoRows)
+	serviceErr := fmt.Errorf("authorize request: %w: %w", s.errUnauthorized, repoErr)
+
+	code, ok := goerr.CodeOf(serviceErr)
+	s.Require().True(ok)
+	s.Equal(s.unauthorizedSpec.Code, code)
+
+	kind, ok := goerr.KindOf(serviceErr)
+	s.Require().True(ok)
+	s.Equal(goerr.KindUnauthorized, kind)
+
+	goErr, ok := goerr.AsError(serviceErr)
+	s.Require().True(ok)
+	s.Equal("unauthorized", goErr.Error())
+
+	s.True(errors.Is(serviceErr, s.errUnauthorized))
+	s.True(errors.Is(serviceErr, s.errUserNotFound))
+	s.True(errors.Is(serviceErr, s.sqlNoRows))
 }
 
 func (s *ErrorScenarioSuite) TestHelpers_PlainError() {
@@ -71,35 +54,19 @@ func (s *ErrorScenarioSuite) TestHelpers_PlainError() {
 
 	_, ok := goerr.CodeOf(err)
 	s.False(ok)
-	s.False(goerr.CodeIs(err, goerr.CodeInternal))
+	s.False(goerr.CodeIs(err, s.notFoundSpec.Code))
 
 	_, ok = goerr.KindOf(err)
 	s.False(ok)
-	s.False(goerr.KindIs(err, goerr.KindInternal))
+	s.False(goerr.KindIs(err, goerr.KindNotFound))
 
-	_, ok = goerr.FieldOf(err, "op")
+	_, ok = goerr.AsError(err)
 	s.False(ok)
-
-	s.Nil(goerr.AllFields(err))
 }
 
-func (s *ErrorScenarioSuite) TestFields_Copy() {
-	err := goerr.New(
-		"validation failed",
-		goerr.WithField("attempt", 1),
-	)
+func (s *ErrorScenarioSuite) TestErrorsIs_EquivalentSpec() {
+	err := fmt.Errorf("execute user query: %w: %w", s.errUserNotFound, s.sqlNoRows)
+	target := goerr.New("another message", goerr.WithSpec(s.notFoundSpec))
 
-	goErr, ok := goerr.AsError(err)
-	s.Require().True(ok)
-
-	fields := goErr.Fields()
-	fields["attempt"] = 2
-	fields["new"] = "value"
-
-	val, exists := goErr.Field("attempt")
-	s.Require().True(exists)
-	s.Equal(1, val)
-
-	_, exists = goErr.Field("new")
-	s.False(exists)
+	s.True(errors.Is(err, target))
 }

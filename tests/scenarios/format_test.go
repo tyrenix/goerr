@@ -3,28 +3,15 @@ package scenarios_test
 import (
 	"errors"
 	"fmt"
-
-	"github.com/tyrenix/goerr/v2"
 )
 
-func (s *ErrorScenarioSuite) TestDetails() {
-	err := goerr.Wrap(
-		goerr.Wrap(
-			errors.New("sql: no rows in result set"),
-			"execute user query",
-			goerr.WithSpec(s.notFoundSpec),
-			goerr.WithOp("userrepo.GetUser"),
-		),
-		"get user",
-		goerr.WithOp("userservice.GetUser"),
-	)
+func (s *ErrorScenarioSuite) TestFmtErrorf_PreservesChain() {
+	err := fmt.Errorf("get user by id: %w", fmt.Errorf("execute user query: %w: %w", s.errUserNotFound, s.sqlNoRows))
 
 	s.Equal(
-		"user.not_found (kind=not_found): get user (op=userservice.GetUser): execute user query (op=userrepo.GetUser): sql: no rows in result set",
-		goerr.DetailsOf(err),
+		"get user by id: execute user query: user not found: sql: no rows in result set",
+		err.Error(),
 	)
-	s.Equal(err.Error(), fmt.Sprintf("%v", err))
-	s.Equal(goerr.DetailsOf(err), fmt.Sprintf("%+v", err))
-	s.Equal(err.Error(), fmt.Sprintf("%s", err))
-	s.Equal(fmt.Sprintf("%q", err.Error()), fmt.Sprintf("%q", err))
+	s.True(errors.Is(err, s.errUserNotFound))
+	s.True(errors.Is(err, s.sqlNoRows))
 }

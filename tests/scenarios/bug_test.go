@@ -3,36 +3,17 @@ package scenarios_test
 import (
 	"fmt"
 
-	"github.com/tyrenix/goerr/v2"
+	"github.com/tyrenix/goerr/v3"
 )
 
-func (s *ErrorScenarioSuite) TestBug_StdlibWrapperMustNotLeakDetailsIntoErrorText() {
-	err := fmt.Errorf("transport layer: %w", goerr.Wrap(
-		s.permissionError,
-		"check access",
-		goerr.WithSpec(goerr.Define(goerr.CodeForbidden, goerr.KindForbidden)),
-	))
+func (s *ErrorScenarioSuite) TestAsError_WithNestedFmtErrorf() {
+	err := fmt.Errorf("service layer: %w", fmt.Errorf("repo layer: %w: %w", s.errUserNotFound, s.sqlNoRows))
 
-	s.Equal(
-		"transport layer: check access: permission denied",
-		err.Error(),
-	)
-	s.Equal(err.Error(), fmt.Sprintf("%v", err))
-}
+	goErr, ok := goerr.AsError(err)
+	s.Require().True(ok)
+	s.Equal("user not found", goErr.Error())
 
-func (s *ErrorScenarioSuite) TestBug_DetailsOfMustKeepStdlibWrapperContext() {
-	err := fmt.Errorf("transport layer: %w", goerr.Wrap(
-		s.permissionError,
-		"check access",
-		goerr.WithSpec(goerr.Define(goerr.CodeForbidden, goerr.KindForbidden)),
-	))
-
-	s.Equal(
-		"forbidden (kind=forbidden): transport layer: check access: permission denied",
-		goerr.DetailsOf(err),
-	)
-	s.Equal(
-		"transport layer: check access: permission denied",
-		fmt.Sprintf("%+v", err),
-	)
+	code, ok := goerr.CodeOf(err)
+	s.Require().True(ok)
+	s.Equal(s.notFoundSpec.Code, code)
 }
