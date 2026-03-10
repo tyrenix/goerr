@@ -1,23 +1,16 @@
 # goerr
 
-`goerr` is a small structured error package for Go.
+`goerr` is a small business error package for Go.
 
-It keeps the usual `New` and `Wrap` flow, but adds stable business classification through `Spec`, `Code` and `Kind`.
-
-## Goals
-
-- stay close to regular Go error wrapping
-- classify technical errors into business codes at boundaries
-- attach operation names and fields for logs
-- keep public code separate from `Error()`
+It does not replace `fmt.Errorf`. Use `fmt.Errorf` for context and wrapping, and use `goerr` to attach stable business classification through `Code` and `Kind`.
 
 ## Installation
 
 ```bash
-go get github.com/tyrenix/goerr/v2@latest
+go get github.com/tyrenix/goerr/v3@latest
 ```
 
-## Core Types
+## API
 
 ```go
 type Code string
@@ -27,186 +20,74 @@ type Spec struct {
 	Code Code
 	Kind Kind
 }
-```
 
-Define business specs in your domain packages:
-
-```go
-var (
-	UserNotFound = goerr.Define("user.not_found", goerr.KindNotFound)
-	UserExists   = goerr.Define("user.exists", goerr.KindConflict)
-	Internal     = goerr.Define("internal", goerr.KindInternal)
-)
-```
-
-Import path:
-
-```go
-import "github.com/tyrenix/goerr/v2"
-```
-
-## API
-
-```go
 func New(msg string, opts ...Option) error
-func Wrap(err error, msg string, opts ...Option) error
-
 func Define(code Code, kind Kind) Spec
-
 func WithSpec(spec Spec) Option
-func WithOp(op string) Option
-func WithField(key string, value any) Option
-func WithFields(fields map[string]any) Option
 
+func AsError(err error) (*Error, bool)
 func CodeOf(err error) (Code, bool)
 func CodeIs(err error, code Code) bool
 func KindOf(err error) (Kind, bool)
 func KindIs(err error, kind Kind) bool
-func FieldOf(err error, key string) (any, bool)
-func AllFields(err error) map[string]any
-func AsError(err error) (*Error, bool)
-func DetailsOf(err error) string
 ```
 
 ## Usage
 
-### Validation
-
-Use `New` when you are creating an error directly without a cause.
+Define business errors in your shared or domain packages:
 
 ```go
-var PasswordTooShort = goerr.Define("password.too_short", goerr.KindInvalid)
+var (
+	ErrInternal    = goerr.New("internal", goerr.WithSpec(goerr.Define("internal", goerr.KindInternal)))
+	ErrUserNotFound = goerr.New("user not found", goerr.WithSpec(goerr.Define("user.not_found", goerr.KindNotFound)))
+)
+```
 
-func ValidatePassword(password string) error {
-	if len(password) < 6 {
-		return goerr.New(
-			"password is too short",
-			goerr.WithSpec(PasswordTooShort),
-			goerr.WithOp("auth.ValidatePassword"),
-		)
+Map technical errors to business errors at boundaries:
+
+```go
+func (r *Repo) GetByID(id string) error {
+	err := queryUser(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("execute user query: %w: %w", ErrUserNotFound, err)
+		}
+
+		return fmt.Errorf("execute user query: %w: %w", ErrInternal, err)
 	}
 
 	return nil
 }
 ```
 
-### Repository Boundary
-
-Assign business classification where a technical error first becomes a domain error.
+Add service context with plain `fmt.Errorf`:
 
 ```go
-var UserNotFound = goerr.Define("user.not_found", goerr.KindNotFound)
-var Internal = goerr.Define("internal", goerr.KindInternal)
-
-func (r *Repo) GetUser(ctx context.Context, id string) (*User, error) {
-	user, err := r.db.Get(ctx, id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, goerr.Wrap(
-				err,
-				"execute user query",
-				goerr.WithSpec(UserNotFound),
-				goerr.WithOp("userrepo.GetUser"),
-				goerr.WithField("user_id", id),
-			)
-		}
-
-		return nil, goerr.Wrap(
-			err,
-			"execute user query",
-			goerr.WithSpec(Internal),
-			goerr.WithOp("userrepo.GetUser"),
-			goerr.WithField("user_id", id),
-		)
+func (s *Service) GetByID(id string) error {
+	if err := s.repo.GetByID(id); err != nil {
+		return fmt.Errorf("get user by id: %w", err)
 	}
 
-	return user, nil
+	return nil
 }
 ```
 
-### Service Layer
-
-If an error is already classified below, just add context.
+Extract business data on the transport layer:
 
 ```go
-func (s *Service) GetUser(ctx context.Context, id string) (*User, error) {
-	user, err := s.repo.GetUser(ctx, id)
-	if err != nil {
-		return nil, goerr.Wrap(
-			err,
-			"get user",
-			goerr.WithOp("userservice.GetUser"),
-		)
-	}
-
-	return user, nil
-}
-```
-
-### Handler Layer
-
-Use `CodeOf` and `KindOf` for public output and transport mapping.
-
-```go
-func writeError(w http.ResponseWriter, err error) {
+func writeError(err error) {
 	code, _ := goerr.CodeOf(err)
 	kind, _ := goerr.KindOf(err)
 
-	status := http.StatusInternalServerError
-	switch kind {
-	case goerr.KindInvalid:
-		status = http.StatusBadRequest
-	case goerr.KindNotFound:
-		status = http.StatusNotFound
-	}
-
-	http.Error(w, string(code), status)
+	fmt.Println("code:", code)
+	fmt.Println("kind:", kind)
 }
-```
-
-If you need a boolean check instead of extracting the value, use `CodeIs` and `KindIs`.
-
-```go
-if goerr.CodeIs(err, UserNotFound.Code) {
-	// handle not found case
-}
-
-if goerr.KindIs(err, goerr.KindInvalid) {
-	// map invalid errors
-}
-```
-
-## Output
-
-```go
-err := goerr.Wrap(
-	sql.ErrNoRows,
-	"execute user query",
-	goerr.WithSpec(goerr.Define("user.not_found", goerr.KindNotFound)),
-	goerr.WithOp("userrepo.GetUser"),
-)
-
-err = goerr.Wrap(err, "get user", goerr.WithOp("userservice.GetUser"))
-```
-
-`err.Error()`:
-
-```text
-get user: execute user query: sql: no rows in result set
-```
-
-`fmt.Printf("%+v\n", err)`:
-
-```text
-user.not_found (kind=not_found): get user (op=userservice.GetUser): execute user query (op=userrepo.GetUser): sql: no rows in result set
 ```
 
 ## Notes
 
-- `Wrap` returns `nil` when the incoming error is `nil`
-- `errors.Is` and `errors.As` still work with the wrapped technical cause
-- `Error()` is developer-facing
-- `%v` uses `Error()`
-- `%+v` uses detailed structured output for `goerr` values
-- `DetailsOf(err)` is the safest way to get detailed output from mixed error chains
-- `CodeOf` is the stable business code for localization and public responses
+- `Error()` returns the developer-facing message of the matched business error.
+- `CodeOf` and `KindOf` return the nearest `goerr.Error` found by `errors.As`.
+- `CodeIs` and `KindIs` are helpers over `CodeOf` and `KindOf`.
+- `errors.Is` still works for both the business error and the technical cause when they are wrapped with `%w`.
+- if you rely on the nearest business error, keep it first in the `%w` chain

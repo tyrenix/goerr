@@ -5,15 +5,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"github.com/tyrenix/goerr/v2"
+	"github.com/tyrenix/goerr/v3"
 )
 
 type ErrorScenarioSuite struct {
 	suite.Suite
 
-	notFoundSpec    goerr.Spec
-	invalidSpec     goerr.Spec
-	permissionError error
+	notFoundSpec     goerr.Spec
+	unauthorizedSpec goerr.Spec
+	invalidSpec      goerr.Spec
+	errUserNotFound  error
+	errUnauthorized  error
+	sqlNoRows        error
 }
 
 func TestErrorScenarioSuite(t *testing.T) {
@@ -22,6 +25,9 @@ func TestErrorScenarioSuite(t *testing.T) {
 
 func (s *ErrorScenarioSuite) SetupTest() {
 	s.notFoundSpec = goerr.Define("user.not_found", goerr.KindNotFound)
+	s.unauthorizedSpec = goerr.Define("auth.unauthorized", goerr.KindUnauthorized)
 	s.invalidSpec = goerr.Define("user.invalid", goerr.KindInvalid)
-	s.permissionError = errors.New("permission denied")
+	s.errUserNotFound = goerr.New("user not found", goerr.WithSpec(s.notFoundSpec))
+	s.errUnauthorized = goerr.New("unauthorized", goerr.WithSpec(s.unauthorizedSpec))
+	s.sqlNoRows = errors.New("sql: no rows in result set")
 }

@@ -1,12 +1,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/tyrenix/goerr/v2"
+	"github.com/tyrenix/goerr/v3"
 )
 
-var PasswordTooShort = goerr.Define("password.too_short", goerr.KindInvalid)
+var ErrPasswordTooShort = goerr.New(
+	"password is too short",
+	goerr.WithSpec(goerr.Define("password.too_short", goerr.KindInvalid)),
+)
 
 func main() {
 	err := validatePassword("123")
@@ -14,17 +18,13 @@ func main() {
 		return
 	}
 
-	fmt.Println("error:", err.Error())
+	code, _ := goerr.CodeOf(err)
+	kind, _ := goerr.KindOf(err)
 
-	if code, ok := goerr.CodeOf(err); ok {
-		fmt.Println("code:", code)
-	}
-
-	if kind, ok := goerr.KindOf(err); ok {
-		fmt.Println("kind:", kind)
-	}
-
-	fmt.Printf("details: %+v\n", err)
+	fmt.Println("error:", err)
+	fmt.Println("code:", code)
+	fmt.Println("kind:", kind)
+	fmt.Println("is password too short:", errors.Is(err, ErrPasswordTooShort))
 }
 
 func validatePassword(password string) error {
@@ -32,10 +32,5 @@ func validatePassword(password string) error {
 		return nil
 	}
 
-	return goerr.New(
-		"password is too short",
-		goerr.WithSpec(PasswordTooShort),
-		goerr.WithOp("auth.ValidatePassword"),
-		goerr.WithField("min_length", 6),
-	)
+	return ErrPasswordTooShort
 }

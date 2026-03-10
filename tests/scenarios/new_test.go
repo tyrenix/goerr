@@ -1,24 +1,36 @@
 package scenarios_test
 
-import "github.com/tyrenix/goerr/v2"
+import "github.com/tyrenix/goerr/v3"
 
 func (s *ErrorScenarioSuite) TestNew() {
 	err := goerr.New(
-		"password is too short",
-		goerr.WithSpec(goerr.Define("password.too_short", goerr.KindInvalid)),
-		goerr.WithOp("auth.ValidatePassword"),
-		goerr.WithField("min_length", 6),
+		"user not found",
+		goerr.WithSpec(s.notFoundSpec),
 	)
 
 	s.Require().Error(err)
 
 	goErr, ok := goerr.AsError(err)
 	s.Require().True(ok)
-	s.Equal("password is too short", goErr.Message())
-	s.Equal(goerr.Code("password.too_short"), goErr.Code())
-	s.Equal(goerr.KindInvalid, goErr.Kind())
+	s.Equal("user not found", goErr.Error())
+	s.Equal(s.notFoundSpec, goErr.Spec())
+	s.Equal(goerr.Code("user.not_found"), goErr.Code())
+	s.Equal(goerr.KindNotFound, goErr.Kind())
+}
 
-	val, exists := goErr.Field("min_length")
-	s.Require().True(exists)
-	s.Equal(6, val)
+func (s *ErrorScenarioSuite) TestNew_WithoutSpec() {
+	err := goerr.New("plain error")
+
+	s.Require().Error(err)
+
+	goErr, ok := goerr.AsError(err)
+	s.Require().True(ok)
+	s.Equal("plain error", goErr.Error())
+	s.Equal(goerr.Spec{}, goErr.Spec())
+
+	_, ok = goerr.CodeOf(err)
+	s.False(ok)
+
+	_, ok = goerr.KindOf(err)
+	s.False(ok)
 }

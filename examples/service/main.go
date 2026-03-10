@@ -5,47 +5,39 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tyrenix/goerr/v2"
+	"github.com/tyrenix/goerr/v3"
 )
 
-var UserNotFound = goerr.Define("user.not_found", goerr.KindNotFound)
+var ErrUserNotFound = goerr.New(
+	"user not found",
+	goerr.WithSpec(goerr.Define("user.not_found", goerr.KindNotFound)),
+)
 
 func main() {
-	err := getUser()
+	err := getUserByID("42")
 	if err == nil {
 		return
 	}
 
-	fmt.Println("error:", err.Error())
-	fmt.Printf("details: %+v\n", err)
-	fmt.Println("fields:", goerr.AllFields(err))
+	code, _ := goerr.CodeOf(err)
+	kind, _ := goerr.KindOf(err)
+
+	fmt.Println("error:", err)
+	fmt.Println("code:", code)
+	fmt.Println("kind:", kind)
+	fmt.Println("is not found:", errors.Is(err, ErrUserNotFound))
+	fmt.Println("is sql no rows:", errors.Is(err, sql.ErrNoRows))
 }
 
-func getUser() error {
-	err := repoGetUser()
-	if err != nil {
-		return goerr.Wrap(
-			err,
-			"get user",
-			goerr.WithOp("userservice.Get"),
-			goerr.WithField("source", "service"),
-		)
+func getUserByID(id string) error {
+	if err := repoGetUserByID(id); err != nil {
+		return fmt.Errorf("get user by id: %w", err)
 	}
 
 	return nil
 }
 
-func repoGetUser() error {
-	err := sql.ErrNoRows
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return goerr.Wrap(
-			err,
-			"execute user query",
-			goerr.WithSpec(UserNotFound),
-			goerr.WithOp("userrepo.Get"),
-			goerr.WithField("user_id", 42),
-		)
-	}
-
-	return nil
+func repoGetUserByID(id string) error {
+	_ = id
+	return fmt.Errorf("execute user query: %w: %w", ErrUserNotFound, sql.ErrNoRows)
 }
