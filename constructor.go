@@ -1,6 +1,6 @@
 package goerr
 
-// New creates a new structured error.
+// New creates a new business error.
 func New(msg string, opts ...Option) error {
 	err := &Error{msg: msg}
 

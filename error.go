@@ -29,7 +29,7 @@ func (e *Error) Is(target error) bool {
 	return e.spec == t.spec
 }
 
-// Spec returns the current level specification.
+// Spec returns the error specification.
 func (e *Error) Spec() Spec {
 	if e == nil {
 		return Spec{}
@@ -38,7 +38,7 @@ func (e *Error) Spec() Spec {
 	return e.spec
 }
 
-// Code returns the current level code.
+// Code returns the error code.
 func (e *Error) Code() Code {
 	if e == nil {
 		return ""
@@ -47,7 +47,7 @@ func (e *Error) Code() Code {
 	return e.spec.Code
 }
 
-// Kind returns the current level kind.
+// Kind returns the error kind.
 func (e *Error) Kind() Kind {
 	if e == nil {
 		return ""
