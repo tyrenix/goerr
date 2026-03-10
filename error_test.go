@@ -27,6 +27,16 @@ func TestErrorIsBySpec(t *testing.T) {
 	require.True(t, errors.Is(err, target))
 }
 
+func TestNewWithSpec(t *testing.T) {
+	err := NewWithSpec("user not found", "user.not_found", KindNotFound)
+
+	goErr, ok := AsError(err)
+	require.True(t, ok)
+	require.Equal(t, "user not found", goErr.Error())
+	require.Equal(t, Code("user.not_found"), goErr.Code())
+	require.Equal(t, KindNotFound, goErr.Kind())
+}
+
 func TestErrorIsDoesNotMatchZeroSpec(t *testing.T) {
 	err := New("plain error")
 	target := New("another plain error")

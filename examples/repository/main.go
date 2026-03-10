@@ -9,14 +9,8 @@ import (
 )
 
 var (
-	ErrUserNotFound = goerr.New(
-		"user not found",
-		goerr.WithSpec(goerr.Define("user.not_found", goerr.KindNotFound)),
-	)
-	ErrInternal = goerr.New(
-		"internal",
-		goerr.WithSpec(goerr.Define("internal", goerr.KindInternal)),
-	)
+	ErrUserNotFound = goerr.NewWithSpec("user not found", "user.not_found", goerr.KindNotFound)
+	ErrInternal     = goerr.NewWithSpec("internal", "internal", goerr.KindInternal)
 )
 
 func main() {

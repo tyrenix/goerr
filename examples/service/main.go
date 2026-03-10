@@ -8,10 +8,7 @@ import (
 	"github.com/tyrenix/goerr/v3"
 )
 
-var ErrUserNotFound = goerr.New(
-	"user not found",
-	goerr.WithSpec(goerr.Define("user.not_found", goerr.KindNotFound)),
-)
+var ErrUserNotFound = goerr.NewWithSpec("user not found", "user.not_found", goerr.KindNotFound)
 
 func main() {
 	err := getUserByID("42")

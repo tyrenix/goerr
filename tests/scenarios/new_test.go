@@ -3,10 +3,7 @@ package scenarios_test
 import "github.com/tyrenix/goerr/v3"
 
 func (s *ErrorScenarioSuite) TestNew() {
-	err := goerr.New(
-		"user not found",
-		goerr.WithSpec(s.notFoundSpec),
-	)
+	err := goerr.NewWithSpec("user not found", s.notFoundSpec.Code, s.notFoundSpec.Kind)
 
 	s.Require().Error(err)
 
