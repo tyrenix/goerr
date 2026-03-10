@@ -6,7 +6,7 @@ type Error struct {
 	spec Spec
 }
 
-// Error returns the error message chain.
+// Error returns the business error message.
 func (e *Error) Error() string {
 	if e == nil {
 		return ""
