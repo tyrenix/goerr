@@ -42,3 +42,13 @@ func KindIs(err error, kind Kind) bool {
 	got, ok := KindOf(err)
 	return ok && got == kind
 }
+
+// FieldOf returns the nearest field value from the error chain.
+func FieldOf(err error, key string) (any, bool) {
+	t, ok := AsError(err)
+	if !ok {
+		return nil, false
+	}
+
+	return t.GetField(key)
+}

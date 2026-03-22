@@ -15,6 +15,7 @@ func TestErrorNilSafety(t *testing.T) {
 	require.Equal(t, Spec{}, err.Spec())
 	require.Equal(t, Code(""), err.Code())
 	require.Equal(t, Kind(""), err.Kind())
+	require.Nil(t, err.Fields())
 	require.False(t, err.Is(New("user not found", WithSpec(Define("user.not_found", KindNotFound)))))
 }
 
@@ -63,4 +64,40 @@ func TestHelpersOnNestedStdlibChain(t *testing.T) {
 	require.True(t, KindIs(err, spec.Kind))
 	require.True(t, errors.Is(err, businessErr))
 	require.True(t, errors.Is(err, technicalErr))
+}
+
+func TestWithFieldAndFieldOf(t *testing.T) {
+	err := NewWithSpec(
+		"invalid id",
+		"id.invalid",
+		KindInvalid,
+		WithField("field", "from_account_id"),
+		WithField("source", "body"),
+	)
+
+	goErr, ok := AsError(err)
+	require.True(t, ok)
+
+	field, ok := goErr.GetField("field")
+	require.True(t, ok)
+	require.Equal(t, "from_account_id", field)
+
+	source, ok := FieldOf(err, "source")
+	require.True(t, ok)
+	require.Equal(t, "body", source)
+}
+
+func TestFieldsReturnsCopy(t *testing.T) {
+	err := New("invalid", WithField("field", "owner_id"))
+	goErr, ok := AsError(err)
+	require.True(t, ok)
+
+	fields := goErr.Fields()
+	require.Equal(t, map[string]any{"field": "owner_id"}, fields)
+
+	fields["field"] = "mutated"
+
+	value, ok := goErr.GetField("field")
+	require.True(t, ok)
+	require.Equal(t, "owner_id", value)
 }
