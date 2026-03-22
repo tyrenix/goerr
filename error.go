@@ -59,8 +59,8 @@ func (e *Error) Kind() Kind {
 	return e.spec.Kind
 }
 
-// GetField returns a field value by key.
-func (e *Error) GetField(key string) (any, bool) {
+// Field returns a field value by key.
+func (e *Error) Field(key string) (any, bool) {
 	if e == nil || e.fields == nil {
 		return nil, false
 	}

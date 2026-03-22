@@ -50,5 +50,5 @@ func FieldOf(err error, key string) (any, bool) {
 		return nil, false
 	}
 
-	return t.GetField(key)
+	return t.Field(key)
 }
