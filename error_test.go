@@ -78,7 +78,7 @@ func TestWithFieldAndFieldOf(t *testing.T) {
 	goErr, ok := AsError(err)
 	require.True(t, ok)
 
-	field, ok := goErr.GetField("field")
+	field, ok := goErr.Field("field")
 	require.True(t, ok)
 	require.Equal(t, "from_account_id", field)
 
@@ -97,7 +97,7 @@ func TestFieldsReturnsCopy(t *testing.T) {
 
 	fields["field"] = "mutated"
 
-	value, ok := goErr.GetField("field")
+	value, ok := goErr.Field("field")
 	require.True(t, ok)
 	require.Equal(t, "owner_id", value)
 }
