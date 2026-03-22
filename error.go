@@ -1,9 +1,12 @@
 package goerr
 
+import "maps"
+
 // Error is a business error with a stable code and kind.
 type Error struct {
-	msg  string
-	spec Spec
+	msg    string
+	spec   Spec
+	fields map[string]any
 }
 
 // Error returns the business error message.
@@ -54,4 +57,26 @@ func (e *Error) Kind() Kind {
 	}
 
 	return e.spec.Kind
+}
+
+// GetField returns a field value by key.
+func (e *Error) GetField(key string) (any, bool) {
+	if e == nil || e.fields == nil {
+		return nil, false
+	}
+
+	value, ok := e.fields[key]
+	return value, ok
+}
+
+// Fields returns a copy of all attached fields.
+func (e *Error) Fields() map[string]any {
+	if e == nil || len(e.fields) == 0 {
+		return nil
+	}
+
+	fields := make(map[string]any, len(e.fields))
+	maps.Copy(fields, e.fields)
+
+	return fields
 }
