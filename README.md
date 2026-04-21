@@ -7,7 +7,7 @@ It does not replace `fmt.Errorf`. Use `fmt.Errorf` for context and wrapping, and
 ## Installation
 
 ```bash
-go get github.com/tyrenix/goerr/v3@latest
+go get github.com/daanila01/goerr/v3@latest
 ```
 
 ## API

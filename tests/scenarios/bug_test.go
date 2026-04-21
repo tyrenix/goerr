@@ -3,7 +3,7 @@ package scenarios_test
 import (
 	"fmt"
 
-	"github.com/tyrenix/goerr/v3"
+	"github.com/daanila01/goerr/v3"
 )
 
 func (s *ErrorScenarioSuite) TestAsError_WithNestedFmtErrorf() {

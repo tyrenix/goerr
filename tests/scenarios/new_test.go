@@ -1,6 +1,6 @@
 package scenarios_test
 
-import "github.com/tyrenix/goerr/v3"
+import "github.com/daanila01/goerr/v3"
 
 func (s *ErrorScenarioSuite) TestNew() {
 	err := goerr.NewWithSpec("user not found", s.notFoundSpec.Code, s.notFoundSpec.Kind)

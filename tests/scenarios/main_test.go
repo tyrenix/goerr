@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/daanila01/goerr/v3"
 	"github.com/stretchr/testify/suite"
-	"github.com/tyrenix/goerr/v3"
 )
 
 type ErrorScenarioSuite struct {

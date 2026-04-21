@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tyrenix/goerr/v3"
+	"github.com/daanila01/goerr/v3"
 )
 
 var ErrPasswordTooShort = goerr.NewWithSpec(
