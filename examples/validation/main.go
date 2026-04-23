@@ -1,0 +1,37 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/daanila01/goerr"
+)
+
+var ErrPasswordTooShort = goerr.NewWithSpec(
+	"password is too short",
+	"password.too_short",
+	goerr.KindInvalid,
+)
+
+func main() {
+	err := validatePassword("123")
+	if err == nil {
+		return
+	}
+
+	code, _ := goerr.CodeOf(err)
+	kind, _ := goerr.KindOf(err)
+
+	fmt.Println("error:", err)
+	fmt.Println("code:", code)
+	fmt.Println("kind:", kind)
+	fmt.Println("is password too short:", errors.Is(err, ErrPasswordTooShort))
+}
+
+func validatePassword(password string) error {
+	if len(password) >= 6 {
+		return nil
+	}
+
+	return ErrPasswordTooShort
+}

@@ -1,0 +1,6 @@
+.env
+*.vs_code
+*.vscode
+*.DS_Store
+tmp
+.gocache
